@@ -6,8 +6,12 @@ oSEM, MRSEM, ISEM have been implemented. Note the version of ISEM in https://git
 
 These scripts have been tested using the OPS-DSL library [1] and HDF5-1.14.6.
 
+The methods in this repository have been tested using the OpenSBLI CFD code [2], and the code for those simulations are in the 'OpenSBLI_cases' folder.
+
 
 ### References
 [1] I. Z. Reguly, G. R. Mudalige and M. B. Giles, Loop Tiling in Large-Scale Stencil Codes at Run-Time with OPS, in IEEE Transactions on Parallel and Distributed Systems, vol. 29, no. 4, pp. 873-886, 1 April 2018, doi: 10.1109/TPDS.2017.2778161.
+
+[2] David J. Lusher, Andrea Sansica, Neil D. Sandham, Jianping Meng, Bálint Siklósi, Atsushi Hashimoto, OpenSBLI v3.0: High-fidelity multi-block transonic aerofoil CFD simulations using domain specific languages on GPUs, Computer Physics Communications, Volume 307, 2025, 109406, ISSN 0010-4655, https://doi.org/10.1016/j.cpc.2024.109406.
 
 
