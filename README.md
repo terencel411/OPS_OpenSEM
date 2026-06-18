@@ -15,3 +15,4 @@ The methods in this repository have been tested using the OpenSBLI CFD code [2],
 [2] David J. Lusher, Andrea Sansica, Neil D. Sandham, Jianping Meng, Bálint Siklósi, Atsushi Hashimoto, OpenSBLI v3.0: High-fidelity multi-block transonic aerofoil CFD simulations using domain specific languages on GPUs, Computer Physics Communications, Volume 307, 2025, 109406, ISSN 0010-4655, https://doi.org/10.1016/j.cpc.2024.109406.
 
 
+# OPS_OpenSEM
