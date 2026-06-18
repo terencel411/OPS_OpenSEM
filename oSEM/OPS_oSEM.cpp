@@ -19,7 +19,7 @@ std::map<int, int> eps_map;
 #include "OPS_oSEM_constants.h"
 #include "OPS_oSEM_eddy_functions.h"
 #include "OPS_oSEM_kernels.h"
-
+#include "io.h"
 
 int main(int argc, char** argv){
     ops_init(argc, argv, 1);
@@ -33,6 +33,7 @@ int main(int argc, char** argv){
     ny = 100;
     nz = 150;
     niter = 2000;
+    write_output_file = 200;
     TI = 0.01;
     x_min = -r_max;
     x_max = r_max;
@@ -276,7 +277,10 @@ int main(int argc, char** argv){
 
     printf("======================================\n");
 
-    for(int i{0}; i < niter; i++){
+    for(i=0; i < niter; i++){
+        if(fmod(i+1, write_output_file) == 0){
+	        ops_printf("Reached iteration %d\n", i+1);
+        }
 
         //seed_gbl = (a * seed_gbl + c) % m;
         //ops_randomgen_init(seed_gbl, 0);
@@ -348,7 +352,7 @@ int main(int argc, char** argv){
         ops_arg_gbl(r_gbl, eddies, "double", OPS_READ),
         ops_arg_gbl(eps_x_gbl, eddies, "int", OPS_READ),
         ops_arg_gbl(eps_y_gbl, eddies, "int", OPS_READ),
-        ops_arg_gbl(eps_z_gbl, eddies, "int", OPS_READ),);
+        ops_arg_gbl(eps_z_gbl, eddies, "int", OPS_READ));
 
         /*
         filename = std::string("u_test" + std::to_string(i) + ".dat");
@@ -357,6 +361,18 @@ int main(int argc, char** argv){
         ops_print_dat_to_txtfile(d_vprime, filename.c_str());
         filename = std::string("w_test" + std::to_string(i) + ".dat");
         ops_print_dat_to_txtfile(d_wprime, filename.c_str());*/
+
+        if(fmod(i+1, write_output_file) == 0){
+	        HDF5_IO_Write_inlet_block_dynamic(
+                inlet_block, 
+                i, 
+                d_y_inlet, d_z_inlet, 
+                d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
+                d_uprime, d_vprime, d_wprime, 
+                x_gbl, y_gbl, z_gbl, r_gbl, 
+                eps_x_gbl, eps_y_gbl, eps_z_gbl
+            );
+        }
     }
 
     ops_timers(&ct1, &et1);
@@ -364,6 +380,16 @@ int main(int argc, char** argv){
     ops_printf("time elapsed: %f \n", et1 - et0);
 
     ops_printf("%s \n", "--------------------");
+
+    HDF5_IO_Write_inlet_block(
+        inlet_block, 
+        i, 
+        d_y_inlet, d_z_inlet, 
+        d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
+        d_uprime, d_vprime, d_wprime, 
+        x_gbl, y_gbl, z_gbl, r_gbl, 
+        eps_x_gbl, eps_y_gbl, eps_z_gbl
+    );
 
     ops_exit();
 }
