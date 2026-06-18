@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <string>
-#include <cuda_runtime.h>
+// #include <cuda_runtime.h>
 
 std::mt19937 urng;
 std::uniform_real_distribution<double> y_rand;
@@ -20,6 +20,7 @@ std::map<int, int> eps_map;
 #include "OPS_MRSEM_constants.h"
 #include "OPS_MRSEM_eddy_functions.h"
 #include "OPS_MRSEM_kernels.h"
+#include "OPS_MRSEM_io.h"
 
 
 int main(int argc, char** argv){
@@ -38,6 +39,7 @@ int main(int argc, char** argv){
     ny = 100;
     nz = 150;
     niter = 2000;
+    write_output_file = 200;
     nregions = 3;
     TI = 0.01;
     x_min = -r_max;
@@ -391,9 +393,10 @@ int main(int argc, char** argv){
 
     ops_printf("======================================\n");
 
-    
-
-    for(int i{0}; i < niter; i++){
+    for(i=0; i < niter; i++){
+        if(fmod(i+1, write_output_file) == 0){
+	        ops_printf("Reached iteration %d\n", i+1);
+        }
 
         simulation_time = simulation_time + dt;
         ops_update_const("simulation_time", 1, "double", &simulation_time);
@@ -501,6 +504,17 @@ int main(int argc, char** argv){
         ops_print_dat_to_txtfile(d_vprime, filename.c_str());
         filename = std::string("w_test" + std::to_string(i) + ".dat");
         ops_print_dat_to_txtfile(d_wprime, filename.c_str());*/
+
+        // Write to HDF5 file periodically
+        if(fmod(i+1, write_output_file) == 0){
+	        HDF5_IO_Write_inlet_block_dynamic(
+                inlet_block,
+                i,
+                d_y_inlet, d_z_inlet, 
+                d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
+                d_uprime, d_vprime, d_wprime
+            );
+        }        
     }
 
     ops_timers(&ct1, &et1);
@@ -508,6 +522,17 @@ int main(int argc, char** argv){
     ops_printf("time elapsed: %f \n", et1 - et0);
 
     ops_printf("%s \n", "--------------------");
+
+    // // Write final output to HDF5 file
+    if(fmod(i+1, write_output_file) == 0){
+        HDF5_IO_Write_inlet_block(
+            inlet_block, 
+            i, 
+            d_y_inlet, d_z_inlet, 
+            d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
+            d_uprime, d_vprime, d_wprime
+        );
+    } 
 
     ops_exit();
 }
