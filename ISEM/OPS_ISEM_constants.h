@@ -5,6 +5,8 @@ double r_max;
 int ny;
 int nz;
 int niter;
+int i;
+int write_output_file;
 double TI;
 double x_min;
 double x_max;
