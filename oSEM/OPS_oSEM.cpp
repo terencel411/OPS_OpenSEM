@@ -1,3 +1,7 @@
+// clang-format off
+
+#include "insitu_tracker/block_tracker.hh"
+#include <cstddef>
 #include <cstdlib>
 #include <cmath>
 #include <random>
@@ -48,6 +52,17 @@ int main(int argc, char** argv){
     eddy_z_max = z_max + r_max;
     vol = std::abs((x_max - x_min) * (y_max - y_min + 2 * r_max) * (z_max - z_min + 2 * r_max));
     rep_radius = 0.2 * delta; 
+
+    ops_memspace memspace = OPS_HOST;
+    auto grapher = Graphing::InsituBlockTracker2D<double>(
+            {ny, nz}, 
+            "insitu_tracker/test_output", 
+            {ny, nz}, 
+        1);
+    grapher.set_colour_range({
+               "░", "░","▒","▒","▓","▓","▊","▉","█"
+            });
+
     calc_eddies(eddies, vol, rep_radius);
 
     printf("eddies: %i", eddies);
@@ -325,6 +340,7 @@ int main(int argc, char** argv){
         ops_dat_fetch_data(d_eps_x_gbl, 0, (char*)eps_x_gbl);
         ops_dat_fetch_data(d_eps_y_gbl, 0, (char*)eps_y_gbl);
         ops_dat_fetch_data(d_eps_z_gbl, 0, (char*)eps_z_gbl);
+        // ops_dat_fetch_data(d_eps_z_gbl, 0, (char*)test_var);
 
         //ops_update_const("x_gbl", eddies, "double", x_gbl);
         //ops_update_const("y_gbl", eddies, "double", y_gbl);
@@ -354,13 +370,20 @@ int main(int argc, char** argv){
         ops_arg_gbl(eps_y_gbl, eddies, "int", OPS_READ),
         ops_arg_gbl(eps_z_gbl, eddies, "int", OPS_READ));
 
-        /*
-        filename = std::string("u_test" + std::to_string(i) + ".dat");
-        ops_print_dat_to_txtfile(d_uprime, filename.c_str());
-        filename = std::string("v_test" + std::to_string(i) + ".dat");
-        ops_print_dat_to_txtfile(d_vprime, filename.c_str());
-        filename = std::string("w_test" + std::to_string(i) + ".dat");
-        ops_print_dat_to_txtfile(d_wprime, filename.c_str());*/
+
+        double* data_to_view = (double*)ops_dat_get_raw_pointer(d_vprime, 0, S1D_00, &memspace);
+
+        if (!grapher.generate_graph(data_to_view))
+            std::cout << "Failed to write output file on iter " << i << std::endl;
+
+        ops_dat_release_raw_data(d_vprime, 0, OPS_READ);
+
+        // filename = std::string("u_test" + std::to_string(i) + ".dat");
+        // ops_print_dat_to_txtfile(d_uprime, filename.c_str());
+        // filename = std::string("v_test" + std::to_string(i) + ".dat");
+        // ops_print_dat_to_txtfile(d_vprime, filename.c_str());
+        // filename = std::string("w_test" + std::to_string(i) + ".dat");
+        // ops_print_dat_to_txtfile(d_wprime, filename.c_str());
         
         // Write to HDF5 file periodically
         if(fmod(i+1, write_output_file) == 0){
