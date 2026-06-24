@@ -1,0 +1,4 @@
+export OPS_COMPILER=gnu
+export MPICXX=mpicxx
+export OPS_INSTALL_PATH=/home/trimmer/Work/OpenSBLI/OPS/ops
+export HDF5_INSTALL_PATH=/usr/lib/x86_64-linux-gnu/hdf5/openmpi/
