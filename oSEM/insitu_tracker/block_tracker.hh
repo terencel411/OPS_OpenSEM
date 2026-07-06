@@ -1,9 +1,11 @@
 #ifndef OPS_INSITU_VISUALISATION_BLOCK_TRACKER_HH
 #define OPS_INSITU_VISUALISATION_BLOCK_TRACKER_HH
 
+#include "bmp.hh"
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -30,7 +32,7 @@ public:
                        std::size_t graph_every_n = 1)
       : block_size(block_size), file_header(output_files_header),
         output_size(output_size), graph_every(graph_every_n),
-        colour_range(DEFAULT_COLOUR_RANGE), num_calls(0) {};
+        colour_range(DEFAULT_COLOUR_RANGE), num_calls(0), max(255) {};
 
   auto set_colour_range(std::vector<std::string> new_colour_range) -> void;
 
@@ -42,8 +44,8 @@ private:
   std::pair<std::size_t, std::size_t> output_size;
   std::size_t graph_every;
   std::vector<std::string> colour_range;
-
   std::size_t num_calls;
+  std::uint8_t max;
 };
 
 template <typename T>
@@ -91,31 +93,49 @@ auto InsituBlockTracker2D<T>::generate_graph(T *const &flattened_block)
                                  std::max(0, chosen_colour_index - 1))];
   };
 
+  auto get_colour_num_from_value = [point_range, this,
+                                    min_and_max](T value) -> std::uint8_t {
+    if (std::abs(point_range) < 1e-06)
+      return 0;
+
+    auto chosen_colour = static_cast<std::uint8_t>(
+        (std::max(T{0}, (value - min_and_max.first)) / point_range) *
+        static_cast<int>(max));
+
+    return chosen_colour;
+  };
+
   auto graph = std::vector<std::string>{};
+  auto graph_nums = std::vector<std::uint8_t>{};
 
   for (std::size_t y = 0; y < block_size.second; y++) {
     for (std::size_t x = 0; x < block_size.first; x++) {
       graph.push_back(
           get_colour_from_value(flattened_block[(y * block_size.first) + x]));
+      graph_nums.push_back(get_colour_num_from_value(
+          flattened_block[(y * block_size.first) + x]));
     }
   }
 
-  auto output_file = std::ofstream(file_header + std::to_string(num_calls));
+  Writer::write_bmp("bmp_output" + std::to_string(num_calls) + ".bmp",
+                    graph_nums, block_size.first, block_size.second);
 
-  if (!output_file.is_open())
-    return false;
-
-  auto points_counter = std::size_t{0};
-  for (auto point : graph) {
-    if (points_counter % block_size.first == 0) {
-      output_file << "\n";
-    }
-    output_file << point;
-
-    points_counter++;
-  }
-
-  output_file.close();
+  // auto output_file = std::ofstream(file_header + std::to_string(num_calls));
+  //
+  // if (!output_file.is_open())
+  //   return false;
+  //
+  // auto points_counter = std::size_t{0};
+  // for (auto point : graph) {
+  //   if (points_counter % block_size.first == 0) {
+  //     output_file << "\n";
+  //   }
+  //   output_file << point;
+  //
+  //   points_counter++;
+  // }
+  //
+  // output_file.close();
 
   num_calls++;
 
