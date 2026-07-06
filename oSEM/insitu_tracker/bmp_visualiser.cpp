@@ -22,11 +22,9 @@ int main() {
   bool moving_forward = true;
 
   println("|===| Visualiser |===|");
-  println("- To navigate through slides, use enter with no input");
-  println("'f', Enter -> Enter moves Forward (default)");
-  println("'b', Enter -> Enter moves Backward (default)");
-  println("'start', Enter -> Show first slide");
-  println("exit, Enter -> finish program");
+  println("'f' -> Animation moves forward");
+  println("'b' -> Animation moves backward");
+  println("'q' -> Close");
 
   std::string input;
 
@@ -49,45 +47,49 @@ int main() {
     std::cerr << SDL_GetError() << std::endl;
 
   SDL_Event event;
+  bool running = true;
+  auto increment = 1;
 
-  while (true) {
-    std::getline(std::cin, input);
-
+  while (running) {
     SDL_Texture *texture;
-    if (input == "exit")
-      return EXIT_SUCCESS;
 
-    if (input == "f") {
-      moving_forward = true;
-    } else if (input == "b") {
-      moving_forward = false;
-    } else if (input == "start") {
-      current_image = 0;
-      texture = new_image_surface(renderer, current_image);
-    } else if (input == "") {
-      current_image = moving_forward ? current_image + 1 : current_image - 1;
+    while (SDL_PollEvent(&event)) {
 
-      if (current_image < min)
-        current_image = max;
-
-      if (current_image > max)
-        current_image = min;
-
-      texture = new_image_surface(renderer, current_image);
+      switch (event.type) {
+      case SDL_QUIT: {
+        running = false;
+        break;
+      }
+      case SDL_KEYDOWN: {
+        switch (event.key.keysym.sym) {
+        case SDLK_f:
+          increment = 1;
+          break;
+        case SDLK_b:
+          increment = -1;
+          break;
+        case SDLK_q:
+          running = false;
+          break;
+        }
+      }
+      }
     }
+
+    current_image = current_image + increment;
+    if (current_image < min)
+      current_image = max;
+
+    if (current_image > max)
+      current_image = min;
+
+    texture = new_image_surface(renderer, current_image);
 
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 
     SDL_DestroyTexture(texture);
-
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT)
-        break;
-    }
-
-    input = "";
   }
 
   SDL_DestroyRenderer(renderer);
