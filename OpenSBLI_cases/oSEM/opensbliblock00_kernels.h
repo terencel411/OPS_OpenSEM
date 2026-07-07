@@ -1,6 +1,24 @@
 #ifndef OPENSBLIBLOCK00_KERNEL_H
 #define OPENSBLIBLOCK00_KERNEL_H
 
+void uinterp_kernel(ACC<double>& d_uinterp, const ACC<double>& x1_B0, const int* idx){
+  double w1;
+  double w2;
+  if(x1_B0(0,0,0) >= yprofdata[sizeof(yprofdata)/sizeof(double)-1]){
+    d_uinterp(0,0,0) = 1.0;
+  }
+  else{
+    for (int i{1}; i < sizeof(yprofdata)/sizeof(double); i++){
+      if(x1_B0(0,0,0) < yprofdata[i]){
+        w1 = 1 - (x1_B0(0,0,0) - yprofdata[i-1]) / (yprofdata[i]-yprofdata[i-1]);
+        w2 = 1 - w1;
+        d_uinterp(0,0,0) = w1 * uprofdata[i-1] + w2 * uprofdata[i];
+        break;
+      }
+    }
+  }
+}
+
  void opensbliblock00Kernel036(ACC<double> &rhoE_B0, ACC<double> &rhou0_B0, ACC<double> &rhou1_B0, ACC<double>
 &rhou2_B0, ACC<double> &x0_B0, ACC<double> &x2_B0, ACC<double> &rho_B0, ACC<double> &x1_B0, const int *idx)
 {

@@ -611,3 +611,13 @@ int base[] = {0, 0, 0};
 double* value = NULL;
 utau_mean_B0 = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "utau_mean_B0");
 }
+
+ops_dat d_uinterp;
+{
+int halo_p[] = {0, 0, 0};
+int halo_m[] = {0, 0, 0};
+int size[] = {1, ny, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+d_uinterp = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "d_uinterp");
+}

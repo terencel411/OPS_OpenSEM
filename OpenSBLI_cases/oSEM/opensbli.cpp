@@ -14,26 +14,6 @@ static inline double host_x1_of_j(int j){
   return Lx1 * sinh(by * invLx1 * Delta1block0 * (double)j) / sinh(by);
 }
 
-static void host_fill_uinterp(){
-  const int nprof = (int)(sizeof(yprofdata)/sizeof(double));
-  for (int j = 0; j < ny; j++){
-    double y = host_x1_of_j(j);
-    if (y >= yprofdata[nprof-1]){
-      uinterp[j] = 1.0;
-    }
-    else {
-      for (int i = 1; i < nprof; i++){
-        if (y < yprofdata[i]){
-          double w1 = 1.0 - (y - yprofdata[i-1]) / (yprofdata[i] - yprofdata[i-1]);
-          double w2 = 1.0 - w1;
-          uinterp[j] = w1 * uprofdata[i-1] + w2 * uprofdata[i];
-          break;
-        }
-      }
-    }
-  }
-}
-
 static void host_fill_RST(){
   for (int j = 0; j < y_cutoff; j++){
     double x1 = host_x1_of_j(j);
@@ -114,13 +94,13 @@ block0np2 = 150;
 Delta0block0 = 375.0/(block0np0-1);
 Delta1block0 = 100.0/(block0np1-1);
 Delta2block0 = 40.0/(block0np2);
-niter = 55000;
-// niter = 100;
+// niter = 55000;
+niter = 100;
 double rkB[] = {(1.0/3.0), (15.0/16.0), (8.0/15.0)};
 double rkA[] = {0, (-5.0/9.0), (-153.0/128.0)};
 dt = 0.025;
-write_output_file = 5000;
-// write_output_file = 10;
+// write_output_file = 5000;
+write_output_file = 10;
 HDF5_timing = 0;
 Pr = 0.72;
 Minf = 2.0;
@@ -143,8 +123,8 @@ invPr = 1.0/(Pr);
 invRe = 1.0/(Re);
 invRefT = 1.0/(RefT);
 inv_gamma_m1 = 1.0/((-1 + gama));
-start_averaging = 25000;
-// start_averaging = 50;
+// start_averaging = 25000;
+start_averaging = 50;
 invniter = 1.0/(niter - start_averaging);
 
 ny = (int)trunc(block0np1 * 0.6);
@@ -330,8 +310,14 @@ ops_arg_dat(D11_B0, 1, stencil_0_00_44_00_19, "double", OPS_READ),
 ops_arg_dat(SD111_B0, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
 ops_arg_idx());
 
-// velocity profile initialisation (host loop; replaces uinterp_kernel dat)
-host_fill_uinterp();
+// velocity profile initialisation
+int iteration_range_uinterp[] = {0, 1, 0, ny, 0, 1};
+ops_par_loop(uinterp_kernel, "uinterp_kernel", opensbliblock00, 3, iteration_range_uinterp,
+ops_arg_dat(d_uinterp, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(x1_B0, 1, stencil_0_00_00_00_3, "double", OPS_READ),
+ops_arg_idx());
+
+ops_dat_fetch_data(d_uinterp, 0, (char*)uinterp);
 ops_update_const("uinterp", ny, "double", &uinterp[0]);
 
 for(int i{0}; i < ny; i++){
@@ -371,9 +357,9 @@ for(iter=start_iter; iter<=start_iter+niter - 1; iter++)
 {
 simulation_time = tstart + dt*((iter - start_iter)+1);
 ops_update_const("simulation_time", 1, "double", &simulation_time);
-if(fmod(iter+1, 100) == 0){
+if(fmod(iter+1, write_output_file) == 0){
         ops_timers(&inner_end, &elapsed_inner_end);
-        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/100);
+        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/write_output_file);
         ops_NaNcheck(rho_B0);
         ops_timers(&inner_start, &elapsed_inner_start);
 }
