@@ -9,6 +9,48 @@
 #include "ops_seq.h"
 #include "opensbliblock00_kernels.h"
 #include "io.h"
+
+static inline double host_x1_of_j(int j){
+  return Lx1 * sinh(by * invLx1 * Delta1block0 * (double)j) / sinh(by);
+}
+
+static inline double host_rng_uniform(){
+  seed_gbl = (a*seed_gbl + c) % m;
+  return ((double)seed_gbl) / ((double)m);
+}
+static inline int host_rng_sign(){
+  seed_gbl = (a*seed_gbl + c) % m;
+  return ((seed_gbl % 2) == 0) ? 1 : -1;
+}
+
+static void host_instantiate_eddies(){
+  for (int i = 0; i < eddies; i++){
+    eddy_x_gbl[i] = eddy_x_min + host_rng_uniform() * (eddy_x_max - eddy_x_min);
+    eddy_y_gbl[i] = eddy_y_min + host_rng_uniform() * (eddy_y_max - eddy_y_min);
+    eddy_z_gbl[i] = eddy_z_min + host_rng_uniform() * (eddy_z_max - eddy_z_min);
+    eddy_eps_x_gbl[i] = host_rng_sign();
+    eddy_eps_y_gbl[i] = host_rng_sign();
+    eddy_eps_z_gbl[i] = host_rng_sign();
+    eddy_r_gbl[i] = radius;
+    eddy_increment_gbl[i] = 1.0 * dt;
+  }
+}
+
+static void host_convect_eddies(){
+  for (int i = 0; i < eddies; i++){
+    eddy_x_gbl[i] = eddy_x_gbl[i] + eddy_increment_gbl[i];
+    if (eddy_x_gbl[i] > eddy_x_max){
+      eddy_x_gbl[i] = eddy_x_min;
+      eddy_y_gbl[i] = eddy_y_min + host_rng_uniform() * (eddy_y_max - eddy_y_min);
+      eddy_z_gbl[i] = eddy_z_min + host_rng_uniform() * (eddy_z_max - eddy_z_min);
+      eddy_eps_x_gbl[i] = host_rng_sign();
+      eddy_eps_y_gbl[i] = host_rng_sign();
+      eddy_eps_z_gbl[i] = host_rng_sign();
+    }
+  }
+}
+// -----------------------------------------------------------------------------
+
 int main(int argc, char **argv) 
 {
 // Initializing OPS 
@@ -23,11 +65,13 @@ block0np2 = 150;
 Delta0block0 = 375.0/(block0np0-1);
 Delta1block0 = 100.0/(block0np1-1);
 Delta2block0 = 40.0/(block0np2);
-niter = 100;
+niter = 55000;
+// niter = 100;
 double rkB[] = {(1.0/3.0), (15.0/16.0), (8.0/15.0)};
 double rkA[] = {0, (-5.0/9.0), (-153.0/128.0)};
 dt = 0.025;
-write_output_file = 10;
+write_output_file = 5000;
+// write_output_file = 10;
 HDF5_timing = 0;
 Pr = 0.72;
 Minf = 2.0;
@@ -50,7 +94,8 @@ invPr = 1.0/(Pr);
 invRe = 1.0/(Re);
 invRefT = 1.0/(RefT);
 inv_gamma_m1 = 1.0/((-1 + gama));
-start_averaging = 50;
+start_averaging = 25000;
+// start_averaging = 50;
 invniter = 1.0/(niter - start_averaging);
 
 ny = (int)trunc(block0np1 * 0.6);
@@ -156,9 +201,6 @@ ops_decl_const("eddy_z_max", 1, "double", &eddy_z_max);
 
 // Define and Declare OPS Block
 ops_block opensbliblock00 = ops_decl_block(3, "opensbliblock00");
-ops_block eddy_block   = ops_decl_block(1, "eddy_block");
-ops_block uinterp_block = ops_decl_block(1, "uinterp_block");
-ops_block rst_block    = ops_decl_block(1, "rst_block");
 #include "defdec_data_set.h"
 // Define and declare stencils
 #include "stencils.h"
@@ -240,9 +282,10 @@ ops_arg_dat(SD111_B0, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
 ops_arg_idx());
 
 // velocity profile initialisation
-int iteration_range_uinterp[] = {0, ny};
-ops_par_loop(uinterp_kernel, "uinterp_kernel", uinterp_block, 1, iteration_range_uinterp,
-ops_arg_dat(d_uinterp, 1, stencil_1d_0, "double", OPS_WRITE),
+int iteration_range_uinterp[] = {0, 1, 0, ny, 0, 1};
+ops_par_loop(uinterp_kernel, "uinterp_kernel", opensbliblock00, 3, iteration_range_uinterp,
+ops_arg_dat(d_uinterp, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(x1_B0, 1, stencil_0_00_00_00_3, "double", OPS_READ),
 ops_arg_idx());
 
 ops_dat_fetch_data(d_uinterp, 0, (char*)uinterp);
@@ -254,41 +297,20 @@ for(int i{0}; i < ny; i++){
 
 // -------------------------eddy initialisation-----------------------\
 
-seed_gbl = (a*seed_gbl + c) % m;
-ops_randomgen_init(seed_gbl, 0);
-ops_fill_random_uniform(eddy_x_rng);
-seed_gbl = (a*seed_gbl + c) % m;
-//ops_randomgen_init(seed_gbl, 0);
-ops_fill_random_uniform(eddy_bulk_rng);
-int eddy_iter_range[] = {0, eddies};
-ops_par_loop(instantiate_eddies, "instantiate_eddies", eddy_block, 1, eddy_iter_range,
-ops_arg_dat(eddy_x, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_y, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_z, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_r, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_increment, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_eps_x, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_eps_y, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_eps_z, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_x_rng, 1, stencil_1d_0, "int", OPS_READ),
-ops_arg_dat(eddy_bulk_rng, 5, stencil_1d_0, "int", OPS_READ));
+host_instantiate_eddies();
 
-ops_dat_fetch_data(eddy_x, 0, (char*)eddy_x_gbl);
-ops_dat_fetch_data(eddy_y, 0, (char*)eddy_y_gbl);
-ops_dat_fetch_data(eddy_z, 0, (char*)eddy_z_gbl);
-ops_dat_fetch_data(eddy_r, 0, (char*)eddy_r_gbl);
-ops_dat_fetch_data(eddy_eps_x, 0, (char*)eddy_eps_x_gbl);
-ops_dat_fetch_data(eddy_eps_y, 0, (char*)eddy_eps_y_gbl);
-ops_dat_fetch_data(eddy_eps_z, 0, (char*)eddy_eps_z_gbl);
-
-
-int interp_iter_range[] = {0, y_cutoff};
-ops_par_loop(interp_RST, "interp_RST", rst_block, 1, interp_iter_range,
-ops_arg_dat(d_a11, 1, stencil_1d_0, "double", OPS_RW),
-ops_arg_dat(d_a21, 1, stencil_1d_0, "double", OPS_RW),
-ops_arg_dat(d_a22, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(d_a33, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_idx());
+int interp_iter_range[] = {0, 1, 0, y_cutoff, 0, 1};
+ops_par_loop(interp_RST, "interp_RST", opensbliblock00, 3, interp_iter_range,
+ops_arg_dat(x1_B0, 1, stencil_0_00_00_00_3, "double", OPS_READ),
+ops_arg_dat(d_a11, 1, stencil_0_00_00_00_3, "double", OPS_RW),
+ops_arg_dat(d_a21, 1, stencil_0_00_00_00_3, "double", OPS_RW),
+ops_arg_dat(d_a22, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(d_a33, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_gbl(ydata, ndata, "double", OPS_READ),
+ops_arg_gbl(uudata, ndata, "double", OPS_READ),
+ops_arg_gbl(uvdata, ndata, "double", OPS_READ),
+ops_arg_gbl(vvdata, ndata, "double", OPS_READ),
+ops_arg_gbl(wwdata, ndata, "double", OPS_READ));
 
 ops_dat_fetch_data(d_a11, 0, (char*)a11);
 ops_dat_fetch_data(d_a21, 0, (char*)a21);
@@ -322,38 +344,15 @@ for(iter=start_iter; iter<=start_iter+niter - 1; iter++)
 {
 simulation_time = tstart + dt*((iter - start_iter)+1);
 ops_update_const("simulation_time", 1, "double", &simulation_time);
-if(fmod(iter+1, write_output_file) == 0){
+if(fmod(iter+1, 100) == 0){
         ops_timers(&inner_end, &elapsed_inner_end);
-        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/write_output_file);
+        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/100);
         ops_NaNcheck(rho_B0);
         ops_timers(&inner_start, &elapsed_inner_start);
 }
 
 // ------------------------ eddy convection -----------------------------------------------
-
-seed_gbl = (a*seed_gbl + c) % m;
-//ops_randomgen_init(seed_gbl, 0);
-ops_fill_random_uniform(eddy_bulk_rng);
-ops_par_loop(convect_eddies, "convect_eddies", eddy_block, 1, eddy_iter_range,
-ops_arg_dat(eddy_x, 1, stencil_1d_0, "double", OPS_RW),
-ops_arg_dat(eddy_y, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_z, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_r, 1, stencil_1d_0, "double", OPS_WRITE),
-ops_arg_dat(eddy_increment, 1, stencil_1d_0, "double", OPS_READ),
-ops_arg_dat(eddy_eps_x, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_eps_y, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_eps_z, 1, stencil_1d_0, "int", OPS_WRITE),
-ops_arg_dat(eddy_bulk_rng, 5, stencil_1d_0, "int", OPS_READ));
-
-ops_dat_fetch_data(eddy_x, 0, (char*) eddy_x_gbl);
-ops_dat_fetch_data(eddy_y, 0, (char*) eddy_y_gbl);
-ops_dat_fetch_data(eddy_z, 0, (char*) eddy_z_gbl);
-ops_dat_fetch_data(eddy_r, 0, (char*) eddy_r_gbl);
-ops_dat_fetch_data(eddy_eps_x, 0, (char*) eddy_eps_x_gbl);
-ops_dat_fetch_data(eddy_eps_y, 0, (char*) eddy_eps_y_gbl);
-ops_dat_fetch_data(eddy_eps_z, 0, (char*) eddy_eps_z_gbl);
-
-
+host_convect_eddies();
 
 //-----------------------------------------------------------------------------------
 
