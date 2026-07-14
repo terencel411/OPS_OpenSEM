@@ -66,12 +66,12 @@ Delta0block0 = 375.0/(block0np0-1);
 Delta1block0 = 100.0/(block0np1-1);
 Delta2block0 = 40.0/(block0np2);
 niter = 55000;
-// niter = 100;
+niter = 100;
 double rkB[] = {(1.0/3.0), (15.0/16.0), (8.0/15.0)};
 double rkA[] = {0, (-5.0/9.0), (-153.0/128.0)};
 dt = 0.025;
 write_output_file = 5000;
-// write_output_file = 10;
+write_output_file = 10;
 HDF5_timing = 0;
 Pr = 0.72;
 Minf = 2.0;
@@ -94,8 +94,8 @@ invPr = 1.0/(Pr);
 invRe = 1.0/(Re);
 invRefT = 1.0/(RefT);
 inv_gamma_m1 = 1.0/((-1 + gama));
-start_averaging = 25000;
-// start_averaging = 50;
+// start_averaging = 25000;
+start_averaging = 50;
 invniter = 1.0/(niter - start_averaging);
 
 ny = (int)trunc(block0np1 * 0.6);
@@ -177,11 +177,11 @@ ops_decl_const("uprofdata", 121, "double", &uprofdata[0]);
 // ---------------------- eddy global constants-------------------------------
 ops_decl_const("y_cutoff", 1, "int", &y_cutoff);
 ops_decl_const("ndata", 1, "int", &ndata);
-ops_decl_const("ydata", ndata, "double", &ydata[0]);
-ops_decl_const("uudata", ndata, "double", &uudata[0]);
-ops_decl_const("uvdata", ndata, "double", &uvdata[0]);
-ops_decl_const("vvdata", ndata, "double", &vvdata[0]);
-ops_decl_const("wwdata", ndata, "double", &wwdata[0]);
+// ops_decl_const("ydata", ndata, "double", &ydata[0]);
+// ops_decl_const("uudata", ndata, "double", &uudata[0]);
+// ops_decl_const("uvdata", ndata, "double", &uvdata[0]);
+// ops_decl_const("vvdata", ndata, "double", &vvdata[0]);
+// ops_decl_const("wwdata", ndata, "double", &wwdata[0]);
 ops_decl_const("delta", 1, "double", &delta);
 ops_decl_const("radius", 1, "double", &radius);
 ops_decl_const("eddy_vol", 1, "double", &eddy_vol);
@@ -344,9 +344,9 @@ for(iter=start_iter; iter<=start_iter+niter - 1; iter++)
 {
 simulation_time = tstart + dt*((iter - start_iter)+1);
 ops_update_const("simulation_time", 1, "double", &simulation_time);
-if(fmod(iter+1, 100) == 0){
+if(fmod(iter+1, 1) == 0){
         ops_timers(&inner_end, &elapsed_inner_end);
-        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/100);
+        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/1);
         ops_NaNcheck(rho_B0);
         ops_timers(&inner_start, &elapsed_inner_start);
 }
