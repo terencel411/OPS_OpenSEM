@@ -1,6 +1,7 @@
 #ifndef INSITU_VISUALISATION_3D_SLICE_TRACKER_HH
 #define INSITU_VISUALISATION_3D_SLICE_TRACKER_HH
 
+#include "bmp.hh"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -166,6 +167,16 @@ public:
                                    end_coord.first, end_coord.second);
   }
 
+  auto get_slice_dims() const -> std::pair<std::size_t, std::size_t> {
+    if constexpr (Axis == 0) {
+      return {block_size[2], block_size[1]};
+    } else if constexpr (Axis == 1) {
+      return {block_size[0], block_size[2]};
+    } else if constexpr (Axis == 2) {
+      return {block_size[0], block_size[1]};
+    }
+  }
+
 private:
   std::array<std::size_t, 3> block_size;
   std::shared_ptr<T> flattened_data;
@@ -205,6 +216,7 @@ auto SliceTracker3D<T, Axis>::generate_graph(T *flattened_block) -> bool {
   auto shared_data = std::shared_ptr<T>(flattened_block, [](T *) {});
   auto slice_accessor =
       DomainSliceAccessor3D<T, Axis>(block_size, shared_data, slice);
+  auto slice_dims = slice_accessor.get_slice_dims();
   auto min_and_max = std::pair<T, T>{T{0}, T{0}};
 
   for (auto value : slice_accessor) {
@@ -213,9 +225,25 @@ auto SliceTracker3D<T, Axis>::generate_graph(T *flattened_block) -> bool {
 
     if (value > min_and_max.second)
       min_and_max.second = value;
-
-    std::cout << value << std::endl;
   }
+
+  auto colour_range = min_and_max.second - min_and_max.first;
+
+  auto image_buffer = std::vector<std::uint8_t>{};
+
+  std::size_t pixel_index = 0;
+
+  for (auto value : slice_accessor) {
+    // image_buffer[(pixel_index * 3) + 0] = (value / colour_range) * 255;
+    // image_buffer[(pixel_index * 3) + 1] = (value / colour_range) * 255;
+    // image_buffer[(pixel_index * 3) + 2] = (value / colour_range) * 255;
+    image_buffer.push_back((value / colour_range) * 255);
+
+    pixel_index++;
+  }
+
+  Writer::write_bmp(output_files_header, image_buffer, slice_dims.first,
+                    slice_dims.second);
 
   return true;
 }
