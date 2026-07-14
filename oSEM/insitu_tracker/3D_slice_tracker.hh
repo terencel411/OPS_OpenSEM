@@ -2,10 +2,12 @@
 #define INSITU_VISUALISATION_3D_SLICE_TRACKER_HH
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <type_traits>
 
 /*
@@ -49,7 +51,14 @@ public:
                  std::size_t slice_index, std::size_t local_x_start,
                  std::size_t local_y_start)
       : data(data), dimensions(dimensions), slice_index(slice_index),
-        local_x(local_x_start), local_y(local_y_start) {};
+        local_x(local_x_start), local_y(local_y_start) {
+          // std::cout << dimensions[0] << dimensions[1] << dimensions[2] <<
+          // std::endl;
+          // std::cout << "Axis: " << static_cast<int>(Axis) << std::endl;
+          //
+          // std::cout << local_x << " " << local_y << " " << slice_index <<
+          // std::endl;
+        };
 
   auto operator++() -> CustomIterator<T, Axis> & {
     // the Y index is never the local x
@@ -61,7 +70,6 @@ public:
     } else {
       local_x++;
     }
-
     return *this;
   };
   auto operator++(int) -> CustomIterator<T, Axis> {
@@ -95,8 +103,9 @@ public:
     return (this->iter_match_data() == oth.iter_match_data());
   };
 
-  auto iter_match_data() const -> std::pair<T const *, std::size_t> {
-    return {data.get(), this->get_flattened_index()};
+  auto iter_match_data() const
+      -> std::tuple<T const *, std::size_t, std::size_t, std::size_t> {
+    return {data.get(), this->get_flattened_index(), local_x, local_y};
   }
 
 private:
@@ -145,7 +154,9 @@ public:
                         std::shared_ptr<T> flattened_data,
                         std::size_t target_slice)
       : block_size(block_size), flattened_data(flattened_data),
-        target_slice(target_slice) {};
+        target_slice(target_slice) {
+    std::cout << "DOMAIN" << target_slice << std::endl;
+  };
 
   auto begin() const -> const CustomIterator<T, Axis> {
     return CustomIterator<T, Axis>(flattened_data, block_size, target_slice, 0,
@@ -180,17 +191,20 @@ template <typename T, std::uint8_t Axis> class SliceTracker3D {
                 "Axis Slice template parameter must be 0, 1 or 2");
 
 public:
-  SliceTracker3D(std::array<T, 3> block_size, std::size_t slice,
+  SliceTracker3D(std::array<std::size_t, 3> block_size, std::size_t slice,
                  std::string output_files_header,
                  std::pair<std::size_t, std::size_t> output_size,
                  std::size_t graph_every_n)
-      : block_size(block_size), output_files_header(output_files_header),
-        output_size(output_size), graph_every_n(graph_every_n) {};
+      : block_size(block_size), slice(slice),
+        output_files_header(output_files_header), output_size(output_size),
+        graph_every_n(graph_every_n) {
+    std::cout << "SLICE" << slice << std::endl;
+  };
 
-  auto generate_graph(T *const &flattened_data) -> bool;
+  auto generate_graph(T *flattened_data) -> bool;
 
 private:
-  std::array<T, 3> block_size;
+  std::array<std::size_t, 3> block_size;
   std::size_t slice;
   std::string output_files_header;
   std::pair<std::size_t, std::size_t> output_size;
@@ -198,10 +212,10 @@ private:
 };
 
 template <typename T, std::uint8_t Axis>
-auto SliceTracker3D<T, Axis>::generate_graph(T *const &flattened_block)
-    -> bool {
-  auto slice_accessor = DomainSliceAccessor3D<T, Axis>(
-      block_size, std::make_shared<T>(flattened_block), slice);
+auto SliceTracker3D<T, Axis>::generate_graph(T *flattened_block) -> bool {
+  auto shared_data = std::shared_ptr<T>(flattened_block, [](T *) {});
+  auto slice_accessor =
+      DomainSliceAccessor3D<T, Axis>(block_size, shared_data, slice);
   auto min_and_max = std::pair<T, T>{T{0}, T{0}};
 
   for (auto value : slice_accessor) {
@@ -210,9 +224,12 @@ auto SliceTracker3D<T, Axis>::generate_graph(T *const &flattened_block)
 
     if (value > min_and_max.second)
       min_and_max.second = value;
+
+    std::cout << value << std::endl;
   }
 
   return true;
 }
+
 } // namespace Insitu
 #endif
