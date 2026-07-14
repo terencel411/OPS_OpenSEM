@@ -51,14 +51,7 @@ public:
                  std::size_t slice_index, std::size_t local_x_start,
                  std::size_t local_y_start)
       : data(data), dimensions(dimensions), slice_index(slice_index),
-        local_x(local_x_start), local_y(local_y_start) {
-          // std::cout << dimensions[0] << dimensions[1] << dimensions[2] <<
-          // std::endl;
-          // std::cout << "Axis: " << static_cast<int>(Axis) << std::endl;
-          //
-          // std::cout << local_x << " " << local_y << " " << slice_index <<
-          // std::endl;
-        };
+        local_x(local_x_start), local_y(local_y_start) {};
 
   auto operator++() -> CustomIterator<T, Axis> & {
     // the Y index is never the local x
@@ -154,9 +147,7 @@ public:
                         std::shared_ptr<T> flattened_data,
                         std::size_t target_slice)
       : block_size(block_size), flattened_data(flattened_data),
-        target_slice(target_slice) {
-    std::cout << "DOMAIN" << target_slice << std::endl;
-  };
+        target_slice(target_slice) {};
 
   auto begin() const -> const CustomIterator<T, Axis> {
     return CustomIterator<T, Axis>(flattened_data, block_size, target_slice, 0,
@@ -197,9 +188,7 @@ public:
                  std::size_t graph_every_n)
       : block_size(block_size), slice(slice),
         output_files_header(output_files_header), output_size(output_size),
-        graph_every_n(graph_every_n) {
-    std::cout << "SLICE" << slice << std::endl;
-  };
+        graph_every_n(graph_every_n) {};
 
   auto generate_graph(T *flattened_data) -> bool;
 

@@ -6,12 +6,12 @@
 int main() {
   std::vector<double> data;
 
-  for (int i = 0; i < 27; i++)
+  std::array<std::size_t, 3> dims = {3, 4, 5};
+
+  for (int i = 0; i < dims[0] * dims[1] * dims[2]; i++)
     data.push_back(i);
 
-  std::array<std::size_t, 3> dims = {3, 3, 3};
-
-  auto tracker = Insitu::SliceTracker3D<double, 0>(dims, 0, "foo", {0, 0}, 1);
+  auto tracker = Insitu::SliceTracker3D<double, 2>(dims, 0, "foo", {0, 0}, 1);
 
   tracker.generate_graph(data.data());
 }
