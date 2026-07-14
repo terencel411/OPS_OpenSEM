@@ -118,6 +118,7 @@ eddy_z_min = -radius;
 eddy_z_max = 40.0 + radius;
 eddy_vol = std::abs((eddy_x_max - eddy_x_min) * (eddy_y_max - eddy_y_min) * (eddy_z_max - eddy_z_min));
 eddies = trunc(eddy_vol/(radius*radius*radius));
+// eddies = 380;
 eddiesm2 = 2 * eddies;
 eddy_x_gbl = (double*)malloc(eddiesm2 * sizeof(double));
 eddy_y_gbl = (double*)malloc(eddiesm2 * sizeof(double));
@@ -132,6 +133,7 @@ c = 3;
 m = pow(2, 29);
 seed_gbl = 182383739;
 
+ops_printf("\neddies = %d", eddies);
 //-------------------------------------------------------------
 
 ops_decl_const("Delta0block0" , 1, "double", &Delta0block0);
@@ -201,6 +203,7 @@ ops_decl_const("eddy_z_max", 1, "double", &eddy_z_max);
 
 // Define and Declare OPS Block
 ops_block opensbliblock00 = ops_decl_block(3, "opensbliblock00");
+ops_block eddy_block = ops_decl_block(3, "eddy_block");
 #include "defdec_data_set.h"
 // Define and declare stencils
 #include "stencils.h"
@@ -297,7 +300,32 @@ for(int i{0}; i < ny; i++){
 
 // -------------------------eddy initialisation-----------------------\
 
-host_instantiate_eddies();
+seed_gbl = (a*seed_gbl + c) % m;
+ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_x_rng);
+seed_gbl = (a*seed_gbl + c) % m;
+//ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_bulk_rng);
+int eddy_iter_range[] = {0, eddies, 0, 1, 0, 1};
+ops_par_loop(instantiate_eddies, "instantiate_eddies", opensbliblock00, 3, eddy_iter_range,
+ops_arg_dat(eddy_x, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_y, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_z, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_r, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_increment, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_x_rng, 1, stencil_0_00_00_00_3, "int", OPS_READ),
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
+
+ops_dat_fetch_data(eddy_x, 0, (char*)eddy_x_gbl);
+ops_dat_fetch_data(eddy_y, 0, (char*)eddy_y_gbl);
+ops_dat_fetch_data(eddy_z, 0, (char*)eddy_z_gbl);
+ops_dat_fetch_data(eddy_r, 0, (char*)eddy_r_gbl);
+ops_dat_fetch_data(eddy_eps_x, 0, (char*)eddy_eps_x_gbl);
+ops_dat_fetch_data(eddy_eps_y, 0, (char*)eddy_eps_y_gbl);
+ops_dat_fetch_data(eddy_eps_z, 0, (char*)eddy_eps_z_gbl);
 
 int interp_iter_range[] = {0, 1, 0, y_cutoff, 0, 1};
 ops_par_loop(interp_RST, "interp_RST", opensbliblock00, 3, interp_iter_range,
@@ -312,6 +340,7 @@ ops_arg_gbl(uvdata, ndata, "double", OPS_READ),
 ops_arg_gbl(vvdata, ndata, "double", OPS_READ),
 ops_arg_gbl(wwdata, ndata, "double", OPS_READ));
 
+// a11, a12, a22, a33 not used in the code after this
 ops_dat_fetch_data(d_a11, 0, (char*)a11);
 ops_dat_fetch_data(d_a21, 0, (char*)a21);
 ops_dat_fetch_data(d_a22, 0, (char*)a22);
@@ -352,7 +381,29 @@ if(fmod(iter+1, 1) == 0){
 }
 
 // ------------------------ eddy convection -----------------------------------------------
-host_convect_eddies();
+
+seed_gbl = (a*seed_gbl + c) % m;
+//ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_bulk_rng);
+// int eddy_iter_range[] = {0, eddies, 0, 1, 0, 1};
+ops_par_loop(convect_eddies, "convect_eddies", opensbliblock00, 3, eddy_iter_range,
+ops_arg_dat(eddy_x, 1, stencil_0_00_00_00_3, "double", OPS_RW),
+ops_arg_dat(eddy_y, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_z, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_r, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_increment, 1, stencil_0_00_00_00_3, "double", OPS_READ),
+ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
+
+ops_dat_fetch_data(eddy_x, 0, (char*) eddy_x_gbl);
+ops_dat_fetch_data(eddy_y, 0, (char*) eddy_y_gbl);
+ops_dat_fetch_data(eddy_z, 0, (char*) eddy_z_gbl);
+ops_dat_fetch_data(eddy_r, 0, (char*) eddy_r_gbl);
+ops_dat_fetch_data(eddy_eps_x, 0, (char*) eddy_eps_x_gbl);
+ops_dat_fetch_data(eddy_eps_y, 0, (char*) eddy_eps_y_gbl);
+ops_dat_fetch_data(eddy_eps_z, 0, (char*) eddy_eps_z_gbl);
 
 //-----------------------------------------------------------------------------------
 
