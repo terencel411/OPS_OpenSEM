@@ -120,23 +120,6 @@ auto InsituBlockTracker2D<T>::generate_graph(T *const &flattened_block)
   Writer::write_bmp("bmp_output" + std::to_string(num_calls) + ".bmp",
                     graph_nums, block_size.first, block_size.second);
 
-  // auto output_file = std::ofstream(file_header + std::to_string(num_calls));
-  //
-  // if (!output_file.is_open())
-  //   return false;
-  //
-  // auto points_counter = std::size_t{0};
-  // for (auto point : graph) {
-  //   if (points_counter % block_size.first == 0) {
-  //     output_file << "\n";
-  //   }
-  //   output_file << point;
-  //
-  //   points_counter++;
-  // }
-  //
-  // output_file.close();
-
   num_calls++;
 
   return true;
@@ -146,23 +129,19 @@ auto InsituBlockTracker2D<T>::generate_graph(T *const &flattened_block)
 
 #endif
 
-// double* data_to_view = (double*)ops_dat_get_raw_pointer(d_wprime, 0, S1D_00,
-// &memspace); if (!grapher.generate_graph(data_to_view))
-//     std::cout << "Failed to write output file on iter " << i << std::endl;
-// ops_dat_release_raw_data(d_wprime, 0, OPS_READ);
+// auto output_file = std::ofstream(file_header + std::to_string(num_calls));
 //
-// //
-//         if (i == 50) {
-//             ops_memspace memspace = OPS_HOST;
+// if (!output_file.is_open())
+//   return false;
 //
-//             double* data_to_view = (double*)ops_dat_get_raw_pointer(d_wprime,
-//             0, S1D_00, &memspace); std::cout << data_to_view << std::endl;
+// auto points_counter = std::size_t{0};
+// for (auto point : graph) {
+//   if (points_counter % block_size.first == 0) {
+//     output_file << "\n";
+//   }
+//   output_file << point;
 //
-//             for (int _y = 0; _y < nz; _y++) {
-//                 for (int _z = 0; _z < ny; _z++) {
-//                     std::cout << data_to_view[(_y * ny) + _z] << " ";
-//                 }
-//                 std::cout << "\n";
-//             }
-//         }
+//   points_counter++;
+// }
 //
+// output_file.close();
