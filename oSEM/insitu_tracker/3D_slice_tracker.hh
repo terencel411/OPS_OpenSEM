@@ -1,0 +1,218 @@
+#ifndef INSITU_VISUALISATION_3D_SLICE_TRACKER_HH
+#define INSITU_VISUALISATION_3D_SLICE_TRACKER_HH
+
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
+
+/*
+// clang-format off
+ * WARN: The axis is making the assumption that, on a cuboid shape where the
+ * (0,0,0) coordinate is the left most bottom point.
+ * From there, it assumes that the points go like this (assume a 3x3x3)
+ * (0,0,0)
+ * (1,0,0)
+ * (2,0,0)
+ * (3,0,0)
+ * (0,1,0)
+ * (1,1,0)
+ * (2,1,0)
+ * (3,1,0)
+ * ...
+ * (0,0,1)
+ * (1,0,1)
+ * (2,0,1)
+ * (3,0,1)
+//clang-format on
+ */
+
+// INFO: The template Axis parameter indicates that all points in that plane
+// have the Same Index in the (Axis) direction
+// (.., .., X)
+// (.., .., X)
+// (.., .., X)
+// (.., .., X)
+// (.., .., X)
+// eg for fixed Z axis
+template <typename T, std::uint8_t Axis> class CustomIterator {
+  static_assert(std::is_arithmetic<T>::value,
+                "Template argument T to SliceTracker3D must pass "
+                "std::is_arithmetic_v<T>");
+  static_assert(Axis == 0 || Axis == 1 || Axis == 2,
+                "Axis Slice template parameter must be 0, 1 or 2");
+
+public:
+  CustomIterator(std::shared_ptr<T> data, std::array<std::size_t, 3> dimensions,
+                 std::size_t slice_index, std::size_t local_x_start,
+                 std::size_t local_y_start)
+      : data(data), dimensions(dimensions), slice_index(slice_index),
+        local_x(local_x_start), local_y(local_y_start) {};
+
+  auto operator++() -> CustomIterator<T, Axis> & {
+    // the Y index is never the local x
+    auto this_local_x = (Axis == 0) ? 2 : 0;
+
+    if (local_x + 1 >= dimensions[this_local_x]) {
+      local_x = 0;
+      local_y++;
+    } else {
+      local_x++;
+    }
+
+    return *this;
+  };
+  auto operator++(int) -> CustomIterator<T, Axis> {
+    auto old = *this;
+    ++(*this);
+    return old;
+  }
+  auto operator*() const -> T & {
+    /*
+    if constexpr (Axis == 0) {
+      // The Local X will indicate the real Z component -> The correct plane
+      // The Local Y will indicate the real Y component -> The correct line in
+      //                                                   the plane
+      // X is fixed -> Slice index gets correct point
+    } else if constexpr (Axis == 1) {
+      // The Local Y will indicate the real Z component -> The correct plane
+      // Y is fixed -> Slice index gets the correct line in the plane
+      // The Local X will indicate the real X component -> the correct point
+    } else if constexpr (Axis == 2) {
+      // The Local X will indicate the X component -> The point on line
+      // The Local Y will indicate the Y component -> The line in the plane
+      // Z is fixed -> Slice Index gets you to the correct plane
+    }
+    */
+    return data.get()[this->get_flattened_index()];
+  }
+  auto operator!=(const CustomIterator<T, Axis> &oth) const -> bool {
+    return (this->iter_match_data() != oth.iter_match_data());
+  }
+  auto operator==(const CustomIterator<T, Axis> &oth) const -> bool {
+    return (this->iter_match_data() == oth.iter_match_data());
+  };
+
+  auto iter_match_data() const -> std::pair<T const *, std::size_t> {
+    return {data.get(), this->get_flattened_index()};
+  }
+
+private:
+  auto get_flattened_index() const -> std::size_t {
+    if constexpr (Axis == 0) {
+      return (local_x * (dimensions[0] * dimensions[1])) +
+             (local_y * dimensions[0]) + slice_index;
+    } else if constexpr (Axis == 1) {
+      return (local_y * (dimensions[0] * dimensions[1])) +
+             (slice_index * dimensions[0]) + local_x;
+    } else if constexpr (Axis == 2) {
+      return (slice_index * (dimensions[0] * dimensions[1])) +
+             (local_y * dimensions[0]) + local_x;
+    }
+  }
+
+  const std::shared_ptr<T> data;
+  const std::array<std::size_t, 3> dimensions;
+  const std::size_t slice_index;
+  // Local referring to the plane in which it is being sliced
+  std::size_t local_x;
+  std::size_t local_y;
+};
+
+/*
+ * - Class will contain a iterator given a flattened 3D set
+ * of points
+ *
+ * - The Axis template parameter specifies the axis which is being
+ * sliced through
+ *
+ * for (auto value : DomainSliceAccessorObject1) {
+ *    a routine can be called such as .get_local_coord() which will return a
+ *    (relative) [x, y]
+ * }￼
+ */
+template <typename T, std::uint8_t Axis> class DomainSliceAccessor3D {
+  static_assert(std::is_arithmetic<T>::value,
+                "Template argument T to SliceTracker3D must pass "
+                "std::is_arithmetic_v<T>");
+  static_assert(Axis == 0 || Axis == 1 || Axis == 2,
+                "Axis Slice template parameter must be 0, 1 or 2");
+
+public:
+  DomainSliceAccessor3D(std::array<std::size_t, 3> block_size,
+                        std::shared_ptr<T> flattened_data,
+                        std::size_t target_slice)
+      : block_size(block_size), flattened_data(flattened_data),
+        target_slice(target_slice) {};
+
+  auto begin() const -> const CustomIterator<T, Axis> {
+    return CustomIterator<T, Axis>(flattened_data, block_size, target_slice, 0,
+                                   0);
+  }
+  auto end() const -> const CustomIterator<T, Axis> {
+    auto end_coord = std::pair{0, 0};
+    if constexpr (Axis == 0) {
+      end_coord = {0, block_size[1]};
+    } else if constexpr (Axis == 1) {
+      end_coord = {0, block_size[2]};
+    } else if constexpr (Axis == 2) {
+      end_coord = {0, block_size[1]};
+    }
+    return CustomIterator<T, Axis>(flattened_data, block_size, target_slice,
+                                   end_coord.first, end_coord.second);
+  }
+
+private:
+  std::array<std::size_t, 3> block_size;
+  std::shared_ptr<T> flattened_data;
+  std::size_t target_slice;
+};
+
+namespace Insitu {
+
+template <typename T, std::uint8_t Axis> class SliceTracker3D {
+  static_assert(std::is_arithmetic<T>::value,
+                "Template argument T to SliceTracker3D must pass "
+                "std::is_arithmetic_v<T>");
+  static_assert(Axis == 0 || Axis == 1 || Axis == 2,
+                "Axis Slice template parameter must be 0, 1 or 2");
+
+public:
+  SliceTracker3D(std::array<T, 3> block_size, std::size_t slice,
+                 std::string output_files_header,
+                 std::pair<std::size_t, std::size_t> output_size,
+                 std::size_t graph_every_n)
+      : block_size(block_size), output_files_header(output_files_header),
+        output_size(output_size), graph_every_n(graph_every_n) {};
+
+  auto generate_graph(T *const &flattened_data) -> bool;
+
+private:
+  std::array<T, 3> block_size;
+  std::size_t slice;
+  std::string output_files_header;
+  std::pair<std::size_t, std::size_t> output_size;
+  std::size_t graph_every_n;
+};
+
+template <typename T, std::uint8_t Axis>
+auto SliceTracker3D<T, Axis>::generate_graph(T *const &flattened_block)
+    -> bool {
+  auto slice_accessor = DomainSliceAccessor3D<T, Axis>(
+      block_size, std::make_shared<T>(flattened_block), slice);
+  auto min_and_max = std::pair<T, T>{T{0}, T{0}};
+
+  for (auto value : slice_accessor) {
+    if (value < min_and_max.first)
+      min_and_max.first = value;
+
+    if (value > min_and_max.second)
+      min_and_max.second = value;
+  }
+
+  return true;
+}
+} // namespace Insitu
+#endif
