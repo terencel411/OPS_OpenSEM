@@ -1,3 +1,4 @@
+// clang-format off
 #include <stdlib.h> 
 #include <string.h> 
 #include <math.h> 
@@ -6,6 +7,7 @@
 #include "TBL_data.h"
 #define OPS_3D
 #define OPS_API 2
+#include "3D_slice_tracker.hh"
 #include "ops_seq.h"
 #include "opensbliblock00_kernels.h"
 #include "io.h"
@@ -102,6 +104,7 @@ static void host_convect_eddies(){
 
 int main(int argc, char **argv) 
 {
+
 // Initializing OPS 
 ops_init(argc,argv,1);
 // Set restart to 1 to restart the simulation from HDF5 file
@@ -114,13 +117,13 @@ block0np2 = 150;
 Delta0block0 = 375.0/(block0np0-1);
 Delta1block0 = 100.0/(block0np1-1);
 Delta2block0 = 40.0/(block0np2);
-niter = 55000;
-// niter = 100;
+// niter = 55000;
+niter = 100;
 double rkB[] = {(1.0/3.0), (15.0/16.0), (8.0/15.0)};
 double rkA[] = {0, (-5.0/9.0), (-153.0/128.0)};
 dt = 0.025;
-write_output_file = 5000;
-// write_output_file = 10;
+// write_output_file = 5000;
+write_output_file = 10;
 HDF5_timing = 0;
 Pr = 0.72;
 Minf = 2.0;
@@ -143,8 +146,26 @@ invPr = 1.0/(Pr);
 invRe = 1.0/(Re);
 invRefT = 1.0/(RefT);
 inv_gamma_m1 = 1.0/((-1 + gama));
-start_averaging = 25000;
-// start_averaging = 50;
+
+// Insitu
+auto tracker_a = Insitu::SliceTracker3D<double, 2>(
+    {static_cast<unsigned long>(block0np0), 
+    static_cast<unsigned long>(block0np1), 
+    static_cast<unsigned long>(block0np2)}, 75, "x0/bmp_out_x1_", {0, 0}, 1);
+auto tracker_b = Insitu::SliceTracker3D<double, 2>(
+    {static_cast<unsigned long>(block0np0), 
+    static_cast<unsigned long>(block0np1), 
+    static_cast<unsigned long>(block0np2)}, 75, "x1/bmp_out_x2_", {0, 0}, 1);
+auto tracker_c = Insitu::SliceTracker3D<double, 2>(
+    {static_cast<unsigned long>(block0np0),
+    static_cast<unsigned long>(block0np1), 
+    static_cast<unsigned long>(block0np2)}, 75, "x2/bmp_out_x3_", {0, 0}, 1);
+ops_memspace memspace = OPS_HOST;
+int s1d_00[] = {0};
+ops_stencil S1D_00 = ops_decl_stencil(1, 1, s1d_00, "self1d");
+
+// start_averaging = 25000;
+start_averaging = 50;
 invniter = 1.0/(niter - start_averaging);
 
 ny = (int)trunc(block0np1 * 0.6);
@@ -369,11 +390,12 @@ double inner_end, elapsed_inner_end;
 ops_timers(&inner_start, &elapsed_inner_start);
 for(iter=start_iter; iter<=start_iter+niter - 1; iter++)
 {
+
 simulation_time = tstart + dt*((iter - start_iter)+1);
 ops_update_const("simulation_time", 1, "double", &simulation_time);
-if(fmod(iter+1, 100) == 0){
+if(fmod(iter+1, write_output_file) == 0){
         ops_timers(&inner_end, &elapsed_inner_end);
-        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/100);
+        ops_printf("Iteration: %d. Time-step: %.3e. Simulation time: %.5f. Time/iteration: %lf.\n", iter+1, dt, simulation_time, (elapsed_inner_end - elapsed_inner_start)/write_output_file);
         ops_NaNcheck(rho_B0);
         ops_timers(&inner_start, &elapsed_inner_start);
 }
@@ -698,10 +720,26 @@ ops_arg_dat(u2u2_mean_B0, 1, stencil_0_00_00_00_3, "double", OPS_RW),
 ops_arg_dat(u0u1_mean_B0, 1, stencil_0_00_00_00_3, "double", OPS_RW),
 ops_arg_dat(utau_mean_B0, 1, stencil_0_00_00_00_3, "double", OPS_RW),
 ops_arg_idx());
+
 }
 
 if (fmod(1 + iter,write_output_file) == 0 || iter == 0){
 HDF5_IO_Write_0_opensbliblock00_dynamic(opensbliblock00, iter, rho_B0, rhou0_B0, rhou1_B0, rhou2_B0, rhoE_B0, x0_B0, x1_B0, x2_B0, D11_B0, T_B0, mu_B0, p_B0, HDF5_timing);
+}
+
+
+if (iter % 2 == 0) {
+  double* data_to_view1 = (double*)ops_dat_get_raw_pointer(rhou0_B0, 0, S1D_00, &memspace);
+  double* data_to_view2 = (double*)ops_dat_get_raw_pointer(rhou1_B0, 0, S1D_00, &memspace);
+  double* data_to_view3 = (double*)ops_dat_get_raw_pointer(rhou2_B0, 0, S1D_00, &memspace);
+
+  tracker_a.generate_graph(data_to_view1);
+  tracker_b.generate_graph(data_to_view2);
+  tracker_c.generate_graph(data_to_view3);
+
+  ops_dat_release_raw_data(rhou0_B0, 0, OPS_READ);
+  ops_dat_release_raw_data(rhou1_B0, 0, OPS_READ);
+  ops_dat_release_raw_data(rhou2_B0, 0, OPS_READ);
 }
 
 }

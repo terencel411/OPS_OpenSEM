@@ -11,11 +11,12 @@ include $(OPS_INSTALL_PATH)/../makefiles/Makefile.mpi
 include $(OPS_INSTALL_PATH)/../makefiles/Makefile.cuda
 include $(OPS_INSTALL_PATH)/../makefiles/Makefile.hdf5
 
+CXXFLAGS += -std=c++17
 
 
-HEADERS = opensbliblock00_kernels.h defdec_data_set.h
+HEADERS = opensbliblock00_kernels.h defdec_data_set.h 3D_slice_tracker.hh bmp.hh
 
-OTHER_FILES = 
+OTHER_FILES = bmp.cc
 OPS_GENERATED = opensbli_ops.cpp 
 OPS_FILES = opensbli.cpp 
 
