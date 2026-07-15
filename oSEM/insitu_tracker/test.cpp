@@ -2,13 +2,14 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <iostream>
 #include <vector>
 
 int main() {
   std::vector<double> data;
 
   auto data_alloc_start = std::chrono::steady_clock::now();
-  std::array<std::size_t, 3> dims = {1000, 1000, 1000};
+  std::array<std::size_t, 3> dims = {300, 300, 300};
 
   for (int i = 0; i < dims[0] * dims[1] * dims[2]; i++)
     data.push_back(i);

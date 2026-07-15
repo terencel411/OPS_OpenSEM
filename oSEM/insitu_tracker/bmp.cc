@@ -77,9 +77,9 @@ auto Writer::write_bmp(const std::string &file_name,
   for (auto pixel = std::size_t{0}; pixel < width * height; pixel++) {
     // R G B A -> B G R A
     // always (pixel*4) + 0, 1, 2, 3
-    file_bytes.push_back(pixel_buffer[(pixel)]);
-    file_bytes.push_back(pixel_buffer[(pixel)]);
-    file_bytes.push_back(pixel_buffer[(pixel)]);
+    file_bytes.push_back(pixel_buffer[(pixel * 3) + 0]);
+    file_bytes.push_back(pixel_buffer[(pixel * 3) + 1]);
+    file_bytes.push_back(pixel_buffer[(pixel * 3) + 2]);
     file_bytes.push_back(255);
   }
 

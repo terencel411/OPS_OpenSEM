@@ -11,6 +11,48 @@
 #include <tuple>
 #include <type_traits>
 
+namespace Colours {
+using FixedColourPoints = std::array<std::array<std::uint8_t, 3>, 5>;
+using AllColours = std::array<std::array<std::uint8_t, 3>,
+                              255 * (std::tuple_size_v<FixedColourPoints> - 1)>;
+
+constexpr FixedColourPoints fixed_colour_points{
+    {{0, 0, 0}, {0, 0, 255}, {0, 255, 0}, {255, 0, 0}, {255, 255, 255}}};
+
+constexpr auto populate_colours_array(const FixedColourPoints &points)
+    -> AllColours {
+  AllColours colour_array{13};
+
+  for (int i = 0; i < points.size() - 1; i++) {
+    // Ref to current points
+    std::pair<const std::array<std::uint8_t, 3> &,
+              const std::array<std::uint8_t, 3> &>
+        curr_pair = {points[i], points[i + 1]};
+
+    auto increment = std::array<int, 3>{
+        static_cast<int>(curr_pair.second[0] - curr_pair.first[0]) / 255,
+        static_cast<int>(curr_pair.second[1] - curr_pair.first[1]) / 255,
+        static_cast<int>(curr_pair.second[2] - curr_pair.first[2]) / 255,
+    };
+
+    for (auto x = 0; x < 255; x++) {
+      colour_array[(i * 255) + x] = {
+          static_cast<std::uint8_t>(static_cast<int>(curr_pair.first[0]) +
+                                    increment[0] * x),
+          static_cast<std::uint8_t>(static_cast<int>(curr_pair.first[1]) +
+                                    increment[1] * x),
+          static_cast<std::uint8_t>(static_cast<int>(curr_pair.first[2]) +
+                                    increment[2] * x),
+      };
+    }
+  }
+
+  return colour_array;
+};
+
+constexpr inline AllColours all_colours =
+    populate_colours_array(fixed_colour_points);
+} // namespace Colours
 /*
 // clang-format off
  * WARN: The axis is making the assumption that, on a cuboid shape where the
@@ -234,16 +276,24 @@ auto SliceTracker3D<T, Axis>::generate_graph(T *flattened_block) -> bool {
   std::size_t pixel_index = 0;
 
   for (auto value : slice_accessor) {
-    // image_buffer[(pixel_index * 3) + 0] = (value / colour_range) * 255;
-    // image_buffer[(pixel_index * 3) + 1] = (value / colour_range) * 255;
-    // image_buffer[(pixel_index * 3) + 2] = (value / colour_range) * 255;
-    image_buffer.push_back((value / colour_range) * 255);
+    auto relevant_colour = Colours::all_colours[(value / colour_range) *
+                                                Colours::all_colours.size()];
+    // It expects BGR
+    image_buffer.push_back(relevant_colour[2]);
+    image_buffer.push_back(relevant_colour[1]);
+    image_buffer.push_back(relevant_colour[0]);
 
     pixel_index++;
   }
 
   Writer::write_bmp(output_files_header, image_buffer, slice_dims.first,
                     slice_dims.second);
+
+  for (auto colour : Colours::all_colours) {
+    std::cout << static_cast<int>(colour[0]) << ", "
+              << static_cast<int>(colour[1]) << ", "
+              << static_cast<int>(colour[2]) << std::endl;
+  }
 
   return true;
 }
