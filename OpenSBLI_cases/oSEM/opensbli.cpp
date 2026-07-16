@@ -133,7 +133,7 @@ c = 3;
 m = pow(2, 29);
 seed_gbl = 182383739;
 
-ops_printf("\neddies = %d", eddies);
+ops_printf("\neddies = %d\n", eddies);
 //-------------------------------------------------------------
 
 ops_decl_const("Delta0block0" , 1, "double", &Delta0block0);
@@ -203,7 +203,7 @@ ops_decl_const("eddy_z_max", 1, "double", &eddy_z_max);
 
 // Define and Declare OPS Block
 ops_block opensbliblock00 = ops_decl_block(3, "opensbliblock00");
-ops_block eddy_block = ops_decl_block(3, "eddy_block");
+// ops_block eddy_block = ops_decl_block(3, "eddy_block");
 #include "defdec_data_set.h"
 // Define and declare stencils
 #include "stencils.h"
@@ -212,6 +212,8 @@ ops_block eddy_block = ops_decl_block(3, "eddy_block");
 double partition_start0, elapsed_partition_start0, partition_end0, elapsed_partition_end0;
 ops_timers(&partition_start0, &elapsed_partition_start0);
 ops_partition("");
+printf("Rank %d passed partition\n", ops_get_proc());
+// exit(-1);
 ops_timers(&partition_end0, &elapsed_partition_end0);
 ops_printf("-----------------------------------------\n MPI partition and reading input file time: %lf\n -----------------------------------------\n", elapsed_partition_end0-elapsed_partition_start0);
 // Restart procedure
