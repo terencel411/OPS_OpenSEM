@@ -9,6 +9,7 @@
 #include "ops_seq.h"
 #include "opensbliblock00_kernels.h"
 #include "io.h"
+#include <mpi.h>
 
 static inline double host_x1_of_j(int j){
   return Lx1 * sinh(by * invLx1 * Delta1block0 * (double)j) / sinh(by);
@@ -302,7 +303,18 @@ for(int i{0}; i < ny; i++){
 
 // -------------------------eddy initialisation-----------------------\
 
-host_instantiate_eddies();
+if (ops_get_proc() == 0) {
+    host_instantiate_eddies();
+}
+
+MPI_Bcast(eddy_x_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_y_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_z_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_r_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_increment_gbl, eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_x_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_y_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_z_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
 
 char fname[64];
 sprintf(fname, "convect_eddies_rank%d.txt", ops_get_proc());
@@ -370,7 +382,17 @@ if(fmod(iter+1, 1) == 0){
 
 //-----------------------------------------------------------------------------------
 
-host_convect_eddies();
+if (ops_get_proc() == 0) {
+    host_convect_eddies();
+}
+MPI_Bcast(eddy_x_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_y_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_z_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_r_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_increment_gbl, eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_x_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_y_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
+MPI_Bcast(eddy_eps_z_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
 
 ops_printf("convect eddies [rank %d]: %g %g %g %g %g %g %g %g %g %g\n", 
   ops_get_proc(), eddy_x_gbl[0], eddy_x_gbl[5], eddy_x_gbl[10], eddy_x_gbl[15], eddy_x_gbl[20],
