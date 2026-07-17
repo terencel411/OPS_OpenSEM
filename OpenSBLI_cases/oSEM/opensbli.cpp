@@ -304,6 +304,14 @@ for(int i{0}; i < ny; i++){
 
 host_instantiate_eddies();
 
+char fname[64];
+sprintf(fname, "convect_eddies_rank%d.txt", ops_get_proc());
+FILE* eddy_f = fopen(fname, "w");
+
+ops_printf("instantiate eddies [rank %d]: %g %g %g %g %g %g %g %g %g %g\n", 
+  ops_get_proc(), eddy_x_gbl[0], eddy_x_gbl[5], eddy_x_gbl[10], eddy_x_gbl[15], eddy_x_gbl[20],
+  eddy_x_gbl[eddies-1], eddy_x_gbl[eddies-1-5], eddy_x_gbl[eddies-1-10], eddy_x_gbl[eddies-1-15], eddy_x_gbl[eddies-1-20]);
+
 int interp_iter_range[] = {0, 1, 0, y_cutoff, 0, 1};
 ops_par_loop(interp_RST, "interp_RST", opensbliblock00, 3, interp_iter_range,
 ops_arg_dat(x1_B0, 1, stencil_0_00_00_00_3, "double", OPS_READ),
@@ -363,6 +371,30 @@ if(fmod(iter+1, 1) == 0){
 //-----------------------------------------------------------------------------------
 
 host_convect_eddies();
+
+ops_printf("convect eddies [rank %d]: %g %g %g %g %g %g %g %g %g %g\n", 
+  ops_get_proc(), eddy_x_gbl[0], eddy_x_gbl[5], eddy_x_gbl[10], eddy_x_gbl[15], eddy_x_gbl[20],
+  eddy_x_gbl[eddies-1], eddy_x_gbl[eddies-1-5], eddy_x_gbl[eddies-1-10], eddy_x_gbl[eddies-1-15], eddy_x_gbl[eddies-1-20]);
+
+fprintf(eddy_f, "rank %d  eddies = %d\n\n", ops_get_proc(), eddies);
+fprintf(eddy_f, "%4s  %14s %14s %14s %14s %14s %6s %6s %6s\n",
+        "iter", "x", "y", "z", "r", "incr", "epx", "epy", "epz");
+
+fprintf(eddy_f, "--- (iter %d) first 5 ---\n", iter);
+for (int j = 0; j < 5; j++) {
+    fprintf(eddy_f, "%4d  %14.6e %14.6e %14.6e %14.6e %14.6e %6d %6d %6d\n",
+            j, eddy_x_gbl[j], eddy_y_gbl[j], eddy_z_gbl[j],
+            eddy_r_gbl[j], eddy_increment_gbl[j],
+            eddy_eps_x_gbl[j], eddy_eps_y_gbl[j], eddy_eps_z_gbl[j]);
+}
+
+fprintf(eddy_f, "\n--- last 5 ---\n");
+for (int j = eddies - 5; j < eddies; j++) {
+    fprintf(eddy_f, "%4d  %14.6e %14.6e %14.6e %14.6e %14.6e %6d %6d %6d\n",
+            j, eddy_x_gbl[j], eddy_y_gbl[j], eddy_z_gbl[j],
+            eddy_r_gbl[j], eddy_increment_gbl[j],
+            eddy_eps_x_gbl[j], eddy_eps_y_gbl[j], eddy_eps_z_gbl[j]);
+}
 
 int iteration_range_30_block0[] = {-2, 1, -2, block0np1 + 2, -2, block0np2 + 2};
 ops_par_loop(opensbliblock00Kernel030, "Dirichlet boundary dir0 side0", opensbliblock00, 3, iteration_range_30_block0,
@@ -719,6 +751,9 @@ ops_arg_dat(utau_mean_B0, 1, stencil_0_00_00_00_3, "double", OPS_RW));
 
 HDF5_IO_Write_0_opensbliblock00(opensbliblock00, rho_B0, rhou0_B0, rhou1_B0, rhou2_B0, rhoE_B0, x0_B0, x1_B0, x2_B0, D11_B0, T_B0, mu_B0, p_B0, HDF5_timing);
 HDF5_IO_Write_1_opensbliblock00(opensbliblock00, rho_mean_B0, rhou0_mean_B0, rhou1_mean_B0, rhou2_mean_B0, rhoE_mean_B0, rhou0u0_mean_B0, rhou1u1_mean_B0, rhou2u2_mean_B0, rhou0u1_mean_B0, rhou1u2_mean_B0, rhou0u2_mean_B0, rhou0u0_mean_B0, taux0x1_mean_B0, l_mean_B0, du0dx1_mean_B0, mu_mean_B0, u0_mean_B0, u1_mean_B0, u2_mean_B0, u0u0_mean_B0, u1u1_mean_B0, u2u2_mean_B0, u0u1_mean_B0, utau_mean_B0, HDF5_timing);
+
+fclose(eddy_f);
+
 ops_exit();
 //Main program end 
 }
