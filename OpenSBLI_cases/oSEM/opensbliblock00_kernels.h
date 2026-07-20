@@ -1,6 +1,83 @@
 #ifndef OPENSBLIBLOCK00_KERNEL_H
 #define OPENSBLIBLOCK00_KERNEL_H
 
+void interp_RST(const ACC<double>& x1_B0, ACC<double>& a11, ACC<double>& a21, ACC<double>& a22, ACC<double>& a33, const double* ydata, const double* uudata, const double* uvdata, const double* vvdata, const double* wwdata){
+  // assumes zero uw and vw terms
+
+  double y = 0.08548942989301017 * x1_B0(0,0,0);
+  double uu;
+  double uv;
+  double vv;
+  double ww;
+ 
+  if (y >= 1.0 || y <= 0.0){
+    a11(0,0,0) = 0.0;
+    a21(0,0,0) = 0.0;
+    a22(0,0,0) = 0.0;
+    a33(0,0,0) = 0.0;
+  }
+  else{
+    for (int i{1}; i < ndata; i++){
+      if(x1_B0(0,0,0) < ydata[i]){
+        // evaluate RST 
+        uu = uudata[i-1] + (uudata[i] - uudata[i-1]) / (ydata[i] - ydata[i-1]) * (x1_B0(0,0,0) - ydata[i-1]);
+        uv = uvdata[i-1] + (uvdata[i] - uvdata[i-1]) / (ydata[i] - ydata[i-1]) * (x1_B0(0,0,0) - ydata[i-1]);
+        vv = vvdata[i-1] + (vvdata[i] - vvdata[i-1]) / (ydata[i] - ydata[i-1]) * (x1_B0(0,0,0) - ydata[i-1]);
+        ww = wwdata[i-1] + (wwdata[i] - wwdata[i-1]) / (ydata[i] - ydata[i-1]) * (x1_B0(0,0,0) - ydata[i-1]);
+        
+        a11(0,0,0) = sqrt(uu);
+        a21(0,0,0) = uv / a11(0,0,0);
+        a22(0,0,0) = sqrt(vv - a21(0,0,0)*a21(0,0,0));
+        a33(0,0,0) = sqrt(ww);
+        
+        break;
+      }
+    }
+  }
+}
+
+void instantiate_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_x_rng, const ACC<int>& eddy_bulk_rng){
+  eddy_x(0,0,0) = eddy_x_min + (eddy_x_rng(0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_x_max - eddy_x_min);
+  eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
+  eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
+  eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
+  eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
+  eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
+  eddy_r(0,0,0) = radius;
+  eddy_increment(0,0,0) = 1.0 * dt;
+}
+
+void convect_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, const ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_bulk_rng){
+  eddy_x(0,0,0) = eddy_x(0,0,0) + eddy_increment(0,0,0);
+  
+  if(eddy_x(0,0,0) > eddy_x_max){
+    eddy_x(0,0,0) = eddy_x_min;
+    eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
+    eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
+    eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
+    eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
+    eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
+  }
+}
+
+void uinterp_kernel(ACC<double>& d_uinterp, const ACC<double>& x1_B0, const int* idx){
+  double w1;
+  double w2;
+  if(x1_B0(0,0,0) >= yprofdata[sizeof(yprofdata)/sizeof(double)-1]){
+    d_uinterp(0,0,0) = 1.0;
+  }
+  else{
+    for (int i{1}; i < sizeof(yprofdata)/sizeof(double); i++){
+      if(x1_B0(0,0,0) < yprofdata[i]){
+        w1 = 1 - (x1_B0(0,0,0) - yprofdata[i-1]) / (yprofdata[i]-yprofdata[i-1]);
+        w2 = 1 - w1;
+        d_uinterp(0,0,0) = w1 * uprofdata[i-1] + w2 * uprofdata[i];
+        break;
+      }
+    }
+  }
+}
+
  void opensbliblock00Kernel036(ACC<double> &rhoE_B0, ACC<double> &rhou0_B0, ACC<double> &rhou1_B0, ACC<double>
 &rhou2_B0, ACC<double> &x0_B0, ACC<double> &x2_B0, ACC<double> &rho_B0, ACC<double> &x1_B0, const int *idx)
 {
