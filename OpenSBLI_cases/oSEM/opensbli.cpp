@@ -119,7 +119,7 @@ eddy_z_min = -radius;
 eddy_z_max = 40.0 + radius;
 eddy_vol = std::abs((eddy_x_max - eddy_x_min) * (eddy_y_max - eddy_y_min) * (eddy_z_max - eddy_z_min));
 eddies = trunc(eddy_vol/(radius*radius*radius));
-eddies = 380;
+// eddies = 380;
 eddiesm2 = 2 * eddies;
 eddy_x_gbl = (double*)malloc(eddiesm2 * sizeof(double));
 eddy_y_gbl = (double*)malloc(eddiesm2 * sizeof(double));
@@ -471,12 +471,20 @@ fflush(stdout);
     int* all_disp = (int*)malloc(nranks * sizeof(int));
     MPI_Allgather(&local_disp, 1, MPI_INT, all_disp, 1, MPI_INT, MPI_COMM_WORLD);
 
+    printf("[Rank %d] all displacements:", myrank);
+    for (int i = 0; i < nranks; i++) printf(" %d", all_disp[i]);
+    printf("\n");
+    fflush(stdout);
+
     int is_rep = 1;
     for (int r = 0; r < myrank; r++)
         if (all_disp[r] == local_disp) { is_rep = 0; break; }
 
     int send_n = is_rep ? local_n : 0;    // duplicates send nothing
-    ops_printf("For rank %d, %d elements are sent\n", myrank, send_n);
+    
+    printf("[Rank %d] send_n=%d (local_disp=%d local_n=%d is_rep=%d)\n",
+          myrank, send_n, local_disp, local_n, is_rep);
+    fflush(stdout);
 
     int* counts = (int*)malloc(nranks * sizeof(int));
     int* displs = (int*)malloc(nranks * sizeof(int));
@@ -491,7 +499,7 @@ fflush(stdout);
           tot += counts[r];
         }
 
-        if (tot != eddies) ops_printf("WARN: gather counts sum %d != eddies %d\n", tot, eddies);
+        if (tot != eddies) printf("WARN: gather counts sum %d != eddies %d\n", tot, eddies);
     }
 
     int fetch_n = (size[0] > 0) ? size[0] : 1;
@@ -521,10 +529,6 @@ fflush(stdout);
     #undef GATHER_I
     free(tmp_d); free(tmp_i); free(counts); free(displs); free(all_disp);
 }
-
-ops_printf("convect eddies [rank %d]: %g %g %g %g %g %g %g %g %g %g\n", 
-  ops_get_proc(), eddy_x_gbl[0], eddy_x_gbl[5], eddy_x_gbl[10], eddy_x_gbl[15], eddy_x_gbl[20],
-  eddy_x_gbl[eddies-1], eddy_x_gbl[eddies-1-5], eddy_x_gbl[eddies-1-10], eddy_x_gbl[eddies-1-15], eddy_x_gbl[eddies-1-20]);
 
 fprintf(eddy_f, "rank %d  eddies = %d\n\n", ops_get_proc(), eddies);
 fprintf(eddy_f, "%4s  %14s %14s %14s %14s %14s %6s %6s %6s\n",
