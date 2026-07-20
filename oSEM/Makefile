@@ -13,7 +13,7 @@ include $(OPS_INSTALL_PATH)/../makefiles/Makefile.hdf5
 
 
 
-HEADERS = OPS_oSEM_kernels.h OPS_oSEM_eddy_functions.h OPS_oSEM_constants.h TBL_data.h
+HEADERS = OPS_oSEM_kernels.h OPS_oSEM_eddy_functions.h OPS_oSEM_constants.h TBL_data.h insitu_tracker/block_tracker.hh
 
 OTHER_FILES = 
 OPS_GENERATED = OPS_oSEM_ops.cpp 

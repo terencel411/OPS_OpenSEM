@@ -19,7 +19,7 @@ std::map<int, int> eps_map;
 #include "OPS_oSEM_constants.h"
 #include "OPS_oSEM_eddy_functions.h"
 #include "OPS_oSEM_kernels.h"
-#include "io.h"
+#include "OPS_oSEM_io.h"
 
 int main(int argc, char** argv){
     ops_init(argc, argv, 1);
@@ -361,16 +361,15 @@ int main(int argc, char** argv){
         ops_print_dat_to_txtfile(d_vprime, filename.c_str());
         filename = std::string("w_test" + std::to_string(i) + ".dat");
         ops_print_dat_to_txtfile(d_wprime, filename.c_str());*/
-
+        
+        // Write to HDF5 file periodically
         if(fmod(i+1, write_output_file) == 0){
 	        HDF5_IO_Write_inlet_block_dynamic(
                 inlet_block, 
                 i, 
                 d_y_inlet, d_z_inlet, 
                 d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
-                d_uprime, d_vprime, d_wprime, 
-                x_gbl, y_gbl, z_gbl, r_gbl, 
-                eps_x_gbl, eps_y_gbl, eps_z_gbl
+                d_uprime, d_vprime, d_wprime
             );
         }
     }
@@ -381,14 +380,13 @@ int main(int argc, char** argv){
 
     ops_printf("%s \n", "--------------------");
 
+    // Write final output to HDF5 file
     HDF5_IO_Write_inlet_block(
         inlet_block, 
         i, 
         d_y_inlet, d_z_inlet, 
         d_a11, d_a21, d_a22, d_a31, d_a32, d_a33, 
-        d_uprime, d_vprime, d_wprime, 
-        x_gbl, y_gbl, z_gbl, r_gbl, 
-        eps_x_gbl, eps_y_gbl, eps_z_gbl
+        d_uprime, d_vprime, d_wprime
     );
 
     ops_exit();

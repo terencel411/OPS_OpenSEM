@@ -6,6 +6,8 @@ double r_max;
 int ny;
 int nz;
 int niter;
+int i;
+int write_output_file;
 int nregions;
 double TI;
 double x_min;
