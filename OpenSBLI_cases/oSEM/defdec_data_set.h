@@ -623,6 +623,96 @@ d_uinterp = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, 
 }
 
 //--------------------------eddy dats------------------------
+ops_dat eddy_x;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+eddy_x = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "eddy_x");
+}
+ops_dat eddy_y;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+eddy_y = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "eddy_y");
+}
+ops_dat eddy_z;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+eddy_z = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "eddy_z");
+}
+ops_dat eddy_r;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+eddy_r = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "eddy_r");
+}
+ops_dat eddy_increment;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+double* value = NULL;
+eddy_increment = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "double", "eddy_increment");
+}
+ops_dat eddy_eps_x;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+int* value = NULL;
+eddy_eps_x = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "int", "eddy_eps_x");
+}
+ops_dat eddy_eps_y;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+int* value = NULL;
+eddy_eps_y = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "int", "eddy_eps_y");
+}
+ops_dat eddy_eps_z;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+int* value = NULL;
+eddy_eps_z = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "int", "eddy_eps_z");
+}
+ops_dat eddy_x_rng;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+int* value = NULL;
+eddy_x_rng = ops_decl_dat(opensbliblock00, 1, size, base, halo_m, halo_p, value, "int", "eddy_x_rng");
+}
+ops_dat eddy_bulk_rng;
+{
+int halo_p[] = {1, 0, 0};
+int halo_m[] = {-1, 0, 0};
+int size[] = {eddies, 1, 1};
+int base[] = {0, 0, 0};
+int* value = NULL;
+eddy_bulk_rng = ops_decl_dat(opensbliblock00, 5, size, base, halo_m, halo_p, value, "int", "eddy_bulk_rng");
+}
 
 ops_dat d_a11;
 {

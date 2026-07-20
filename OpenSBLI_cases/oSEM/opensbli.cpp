@@ -119,7 +119,7 @@ eddy_z_min = -radius;
 eddy_z_max = 40.0 + radius;
 eddy_vol = std::abs((eddy_x_max - eddy_x_min) * (eddy_y_max - eddy_y_min) * (eddy_z_max - eddy_z_min));
 eddies = trunc(eddy_vol/(radius*radius*radius));
-// eddies = 380;
+eddies = 380;
 eddiesm2 = 2 * eddies;
 eddy_x_gbl = (double*)malloc(eddiesm2 * sizeof(double));
 eddy_y_gbl = (double*)malloc(eddiesm2 * sizeof(double));
@@ -303,18 +303,32 @@ for(int i{0}; i < ny; i++){
 
 // -------------------------eddy initialisation-----------------------\
 
-if (ops_get_proc() == 0) {
-    host_instantiate_eddies();
-}
+seed_gbl = (a*seed_gbl + c) % m;
+ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_x_rng);
+seed_gbl = (a*seed_gbl + c) % m;
+//ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_bulk_rng);
+int eddy_iter_range[] = {0, eddies, 0, 1, 0, 1};
+ops_par_loop(instantiate_eddies, "instantiate_eddies", opensbliblock00, 3, eddy_iter_range,
+ops_arg_dat(eddy_x, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_y, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_z, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_r, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_increment, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_x_rng, 1, stencil_0_00_00_00_3, "int", OPS_READ),
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
 
-MPI_Bcast(eddy_x_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_y_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_z_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_r_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_increment_gbl, eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_x_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_y_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_z_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
+ops_dat_fetch_data(eddy_x, 0, (char*)eddy_x_gbl);
+ops_dat_fetch_data(eddy_y, 0, (char*)eddy_y_gbl);
+ops_dat_fetch_data(eddy_z, 0, (char*)eddy_z_gbl);
+ops_dat_fetch_data(eddy_r, 0, (char*)eddy_r_gbl);
+ops_dat_fetch_data(eddy_eps_x, 0, (char*)eddy_eps_x_gbl);
+ops_dat_fetch_data(eddy_eps_y, 0, (char*)eddy_eps_y_gbl);
+ops_dat_fetch_data(eddy_eps_z, 0, (char*)eddy_eps_z_gbl);
 
 char fname[64];
 sprintf(fname, "convect_eddies_rank%d.txt", ops_get_proc());
@@ -382,17 +396,131 @@ if(fmod(iter+1, 1) == 0){
 
 //-----------------------------------------------------------------------------------
 
-if (ops_get_proc() == 0) {
-    host_convect_eddies();
+seed_gbl = (a*seed_gbl + c) % m;
+//ops_randomgen_init(seed_gbl, 0);
+ops_fill_random_uniform(eddy_bulk_rng);
+ops_par_loop(convect_eddies, "convect_eddies", opensbliblock00, 3, eddy_iter_range,
+ops_arg_dat(eddy_x, 1, stencil_0_00_00_00_3, "double", OPS_RW),
+ops_arg_dat(eddy_y, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_z, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_r, 1, stencil_0_00_00_00_3, "double", OPS_WRITE),
+ops_arg_dat(eddy_increment, 1, stencil_0_00_00_00_3, "double", OPS_READ),
+ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
+
+ops_dat_fetch_data(eddy_x, 0, (char*) eddy_x_gbl);
+ops_dat_fetch_data(eddy_y, 0, (char*) eddy_y_gbl);
+ops_dat_fetch_data(eddy_z, 0, (char*) eddy_z_gbl);
+ops_dat_fetch_data(eddy_r, 0, (char*) eddy_r_gbl);
+ops_dat_fetch_data(eddy_eps_x, 0, (char*) eddy_eps_x_gbl);
+ops_dat_fetch_data(eddy_eps_y, 0, (char*) eddy_eps_y_gbl);
+ops_dat_fetch_data(eddy_eps_z, 0, (char*) eddy_eps_z_gbl);
+
+// debug statements to check which slice of eddy var the current rank holds
+// disp[d] - where the rank's chunk starts in the global array in dim d (offset)
+// size[d] - how many points this ranks owns in the dim d
+// If I run with eddies = 380 (x-coord) and the blocksize is 750x250x150, the ranks will split and 
+// assign the work
+// Output with 4 ranks (2x2x1):
+//     [rank 0] disp0=0   size0=375
+//     [rank 1] disp0=0   size0=375
+//     [rank 2] disp0=375 size0=5
+//     [rank 3] disp0=375 size0=5
+
+// First chunk has 375 elements starting from 0
+// Second chunk has 5 elements starting from 375
+
+// If eddies = 267 (original)
+// Output:
+//     [rank 3] disp0=375 size0=0  npart=1
+//     [rank 2] disp0=375 size0=0  npart=1
+//     [rank 0] disp0=0 size0=267  npart=1
+//     [rank 1] disp0=0 size0=267  npart=1
+
+// One chunk gets all 267 elements and the other chunk gets 0
+
+// In case the chunks are split (eddies = 380). Need to implement an allgather operation 
+// to get the full eddies array in all ranks to make sure later kernels have all the data
+
+// ops_get_num_procs();
+
+int disp[3], size[3];
+ops_dat_get_extents(eddy_x, 0, disp, size);
+printf("[rank %d] disp0=%d size0=%d  npart=%d\n",
+        ops_get_proc(), disp[0], size[0],
+        ops_dat_get_local_npartitions(eddy_x));
+fflush(stdout);
+
+{
+    int nranks, myrank;
+    MPI_Comm_size(MPI_COMM_WORLD, &nranks);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
+    int disp[3], size[3];
+    ops_dat_get_extents(eddy_x, 0, disp, size);
+    int local_disp = disp[0];
+    int local_n    = size[0];
+
+    // trim to the meaningful range [0, eddies) in case the extent overshoots
+    if (local_disp >= eddies)                local_n = 0;
+    else if (local_disp + local_n > eddies)  local_n = eddies - local_disp;
+
+    // dedupe duplicate slices (y-ranks share the same x-slice)
+    int* all_disp = (int*)malloc(nranks * sizeof(int));
+    MPI_Allgather(&local_disp, 1, MPI_INT, all_disp, 1, MPI_INT, MPI_COMM_WORLD);
+
+    int is_rep = 1;
+    for (int r = 0; r < myrank; r++)
+        if (all_disp[r] == local_disp) { is_rep = 0; break; }
+
+    int send_n = is_rep ? local_n : 0;    // duplicates send nothing
+    ops_printf("For rank %d, %d elements are sent\n", myrank, send_n);
+
+    int* counts = (int*)malloc(nranks * sizeof(int));
+    int* displs = (int*)malloc(nranks * sizeof(int));
+    MPI_Allgather(&send_n,     1, MPI_INT, counts, 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(&local_disp, 1, MPI_INT, displs, 1, MPI_INT, MPI_COMM_WORLD);
+
+    // check to see if total counts of elements equals eddies
+    if (myrank == 0) {
+        int tot = 0;
+
+        for (int r = 0; r < nranks; r++) {
+          tot += counts[r];
+        }
+
+        if (tot != eddies) ops_printf("WARN: gather counts sum %d != eddies %d\n", tot, eddies);
+    }
+
+    int fetch_n = (size[0] > 0) ? size[0] : 1;
+    double* tmp_d = (double*)malloc(fetch_n * sizeof(double));
+    int*    tmp_i = (int*)   malloc(fetch_n * sizeof(int));
+
+    #define GATHER_D(dat, gbl)                                          \
+        ops_dat_fetch_data(dat, 0, (char*)tmp_d);                      \
+        MPI_Allgatherv(tmp_d, send_n, MPI_DOUBLE,                      \
+                       gbl, counts, displs, MPI_DOUBLE, MPI_COMM_WORLD);
+
+    #define GATHER_I(dat, gbl)                                          \
+        ops_dat_fetch_data(dat, 0, (char*)tmp_i);                      \
+        MPI_Allgatherv(tmp_i, send_n, MPI_INT,                         \
+                       gbl, counts, displs, MPI_INT, MPI_COMM_WORLD);
+
+    GATHER_D(eddy_x,         eddy_x_gbl);
+    GATHER_D(eddy_y,         eddy_y_gbl);
+    GATHER_D(eddy_z,         eddy_z_gbl);
+    GATHER_D(eddy_r,         eddy_r_gbl);
+    GATHER_D(eddy_increment, eddy_increment_gbl);
+    GATHER_I(eddy_eps_x,     eddy_eps_x_gbl);
+    GATHER_I(eddy_eps_y,     eddy_eps_y_gbl);
+    GATHER_I(eddy_eps_z,     eddy_eps_z_gbl);
+
+    #undef GATHER_D
+    #undef GATHER_I
+    free(tmp_d); free(tmp_i); free(counts); free(displs); free(all_disp);
 }
-MPI_Bcast(eddy_x_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_y_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_z_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_r_gbl,         eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_increment_gbl, eddies, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_x_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_y_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
-MPI_Bcast(eddy_eps_z_gbl,     eddies, MPI_INT,    0, MPI_COMM_WORLD);
 
 ops_printf("convect eddies [rank %d]: %g %g %g %g %g %g %g %g %g %g\n", 
   ops_get_proc(), eddy_x_gbl[0], eddy_x_gbl[5], eddy_x_gbl[10], eddy_x_gbl[15], eddy_x_gbl[20],
