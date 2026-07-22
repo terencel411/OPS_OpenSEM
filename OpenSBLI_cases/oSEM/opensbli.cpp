@@ -119,7 +119,7 @@ eddy_z_min = -radius;
 eddy_z_max = 40.0 + radius;
 eddy_vol = std::abs((eddy_x_max - eddy_x_min) * (eddy_y_max - eddy_y_min) * (eddy_z_max - eddy_z_min));
 eddies = trunc(eddy_vol/(radius*radius*radius));
-// eddies = 380;
+eddies = 380;
 eddiesm2 = 2 * eddies;
 eddy_x_gbl = (double*)malloc(eddiesm2 * sizeof(double));
 eddy_y_gbl = (double*)malloc(eddiesm2 * sizeof(double));
@@ -198,7 +198,9 @@ ops_decl_const("eddy_y_max", 1, "double", &eddy_y_max);
 ops_decl_const("eddy_z_min", 1, "double", &eddy_z_min);
 ops_decl_const("eddy_z_max", 1, "double", &eddy_z_max);
 
-
+int current_rank;
+current_rank = ops_get_proc();
+ops_decl_const("current_rank", 1, "int", &current_rank);
 //----------------------------------------------------------------------------
 
 
@@ -320,7 +322,8 @@ ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
 ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
 ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
 ops_arg_dat(eddy_x_rng, 1, stencil_0_00_00_00_3, "int", OPS_READ),
-ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ),
+ops_arg_idx());
 
 ops_dat_fetch_data(eddy_x, 0, (char*)eddy_x_gbl);
 ops_dat_fetch_data(eddy_y, 0, (char*)eddy_y_gbl);
@@ -351,7 +354,6 @@ ops_arg_gbl(uvdata, ndata, "double", OPS_READ),
 ops_arg_gbl(vvdata, ndata, "double", OPS_READ),
 ops_arg_gbl(wwdata, ndata, "double", OPS_READ));
 
-// a11, a12, a22, a33 not used in the code after this
 ops_dat_fetch_data(d_a11, 0, (char*)a11);
 ops_dat_fetch_data(d_a21, 0, (char*)a21);
 ops_dat_fetch_data(d_a22, 0, (char*)a22);
@@ -408,7 +410,8 @@ ops_arg_dat(eddy_increment, 1, stencil_0_00_00_00_3, "double", OPS_READ),
 ops_arg_dat(eddy_eps_x, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
 ops_arg_dat(eddy_eps_y, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
 ops_arg_dat(eddy_eps_z, 1, stencil_0_00_00_00_3, "int", OPS_WRITE),
-ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ));
+ops_arg_dat(eddy_bulk_rng, 5, stencil_0_00_00_00_3, "int", OPS_READ),
+ops_arg_idx());
 
 ops_dat_fetch_data(eddy_x, 0, (char*) eddy_x_gbl);
 ops_dat_fetch_data(eddy_y, 0, (char*) eddy_y_gbl);

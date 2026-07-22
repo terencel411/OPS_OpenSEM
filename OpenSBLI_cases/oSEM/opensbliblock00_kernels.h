@@ -36,29 +36,49 @@ void interp_RST(const ACC<double>& x1_B0, ACC<double>& a11, ACC<double>& a21, AC
   }
 }
 
-void instantiate_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_x_rng, const ACC<int>& eddy_bulk_rng){
-  eddy_x(0,0,0) = eddy_x_min + (eddy_x_rng(0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_x_max - eddy_x_min);
-  eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
-  eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
-  eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
-  eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
-  eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
+void instantiate_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_x_rng, const ACC<int>& eddy_bulk_rng, const int* idx){
+  eddy_x(0,0,0) = idx[0];
+  eddy_y(0,0,0) = idx[1];
+  eddy_z(0,0,0) = idx[2];
+  eddy_eps_x(0,0,0) = 1;
+  eddy_eps_y(0,0,0) = 1;
+  eddy_eps_z(0,0,0) = 1;
   eddy_r(0,0,0) = radius;
   eddy_increment(0,0,0) = 1.0 * dt;
 }
 
-void convect_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, const ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_bulk_rng){
-  eddy_x(0,0,0) = eddy_x(0,0,0) + eddy_increment(0,0,0);
-  
-  if(eddy_x(0,0,0) > eddy_x_max){
-    eddy_x(0,0,0) = eddy_x_min;
-    eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
-    eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
-    eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
-    eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
-    eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
-  }
+void convect_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, const ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_bulk_rng, const int* idx){
+  eddy_x(0,0,0) = idx[0];
+  eddy_y(0,0,0) = current_rank;
+  eddy_z(0,0,0) = idx[2];
+  eddy_eps_x(0,0,0) = 1;
+  eddy_eps_y(0,0,0) = 1;
+  eddy_eps_z(0,0,0) = 1;
 }
+
+// void instantiate_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_x_rng, const ACC<int>& eddy_bulk_rng){
+//   eddy_x(0,0,0) = eddy_x_min + (eddy_x_rng(0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_x_max - eddy_x_min);
+//   eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
+//   eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
+//   eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
+//   eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
+//   eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
+//   eddy_r(0,0,0) = radius;
+//   eddy_increment(0,0,0) = 1.0 * dt;
+// }
+
+// void convect_eddies(ACC<double>& eddy_x, ACC<double>& eddy_y, ACC<double>& eddy_z, ACC<double>& eddy_r, const ACC<double>& eddy_increment, ACC<int>& eddy_eps_x, ACC<int>& eddy_eps_y, ACC<int>& eddy_eps_z, const ACC<int>& eddy_bulk_rng){
+//   eddy_x(0,0,0) = eddy_x(0,0,0) + eddy_increment(0,0,0);
+  
+//   if(eddy_x(0,0,0) > eddy_x_max){
+//     eddy_x(0,0,0) = eddy_x_min;
+//     eddy_y(0,0,0) = eddy_y_min + (eddy_bulk_rng(0,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_y_max - eddy_y_min);
+//     eddy_z(0,0,0) = eddy_z_min + (eddy_bulk_rng(1,0,0,0) + 2147483648.0) / (4294967295.0) * (eddy_z_max - eddy_z_min);
+//     eddy_eps_x(0,0,0) = (eddy_bulk_rng(2,0,0,0) < 0) ? -1 : 1;
+//     eddy_eps_y(0,0,0) = (eddy_bulk_rng(3,0,0,0) < 0) ? -1 : 1;
+//     eddy_eps_z(0,0,0) = (eddy_bulk_rng(4,0,0,0) < 0) ? -1 : 1;
+//   }
+// }
 
 void uinterp_kernel(ACC<double>& d_uinterp, const ACC<double>& x1_B0, const int* idx){
   double w1;
